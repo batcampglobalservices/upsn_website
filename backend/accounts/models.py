@@ -1,0 +1,54 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
+
+class CustomUser(AbstractUser):
+    """
+    Custom User model with role-based access
+    """
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('teacher', 'Teacher'),
+        ('student', 'Student'),
+    )
+    
+    # Override username to accept only numeric values
+    username = models.CharField(
+        max_length=20,
+        unique=True,
+        validators=[RegexValidator(regex='^[0-9]+$', message='Username must be numeric')],
+        help_text='Numeric username only'
+    )
+    full_name = models.CharField(max_length=200)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
+    email = models.EmailField(unique=True, blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.username} - {self.full_name} ({self.role})"
+    
+    class Meta:
+        ordering = ['-created_at']
+
+
+class StudentProfile(models.Model):
+    """
+    Extended profile for students with additional academic information
+    """
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='student_profile')
+    student_class = models.ForeignKey('classes.Class', on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
+    admission_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    guardian_name = models.CharField(max_length=200, blank=True, null=True)
+    guardian_phone = models.CharField(max_length=15, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.user.full_name} - {self.student_class}"
+    
+    class Meta:
+        ordering = ['user__full_name']
