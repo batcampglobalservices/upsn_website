@@ -3,6 +3,9 @@
 # exit on error
 set -o errexit
 
+# Change to backend directory if not already there
+cd "$(dirname "$0")"
+
 # Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt

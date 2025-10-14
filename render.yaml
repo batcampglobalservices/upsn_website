@@ -10,11 +10,12 @@ services:
     plan: free
     branch: main
     buildCommand: |
+      cd backend
       pip install --upgrade pip
-      pip install -r backend/requirements.txt
-      pip install gunicorn psycopg2-binary
-      cd backend && python manage.py collectstatic --noinput
-    startCommand: cd backend && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --timeout 120
+      pip install -r requirements.txt
+      pip install gunicorn psycopg2-binary python-decouple
+      python manage.py collectstatic --noinput
+    startCommand: cd backend && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
