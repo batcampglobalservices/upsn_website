@@ -369,6 +369,4 @@ MIT License
 For issues and questions, please create an issue in the repository.
 
 ---
-
-**Built with ❤️ for educational institutions**
-# upsn_website
+#upsn website
