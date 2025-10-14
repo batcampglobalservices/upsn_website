@@ -21,7 +21,33 @@
 10. ✅ `docker-compose.yml` - Local development with Docker
 11. ✅ `render.yaml` - Render blueprint (optional)
 
-## 🚀 DEPLOYMENT TO RENDER
+## 🚀 Render Deployment Guide - FIXED
+
+## ⚠️ CRITICAL FIX: ModuleNotFoundError: No module named 'backend.wsgi'
+
+### Root Cause
+When Render deploys from the repository root, the gunicorn command `backend.wsgi:application` fails because Python can't find the module path.
+
+### ✅ Solution (Choose One)
+
+#### **Solution 1: Use Start Script (RECOMMENDED)**
+```bash
+# Start command in Render:
+./start-backend.sh
+```
+
+#### **Solution 2: Change Directory in Command**
+```bash
+# Start command in Render:
+cd backend && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+```
+
+#### **Solution 3: Set Root Directory**
+In Render Dashboard → Settings → Root Directory: `backend`
+
+---
+
+# 🚀 Deployment Guide - EduPro School Management System
 
 ### Step 1: Prepare Your Repository
 
