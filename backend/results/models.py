@@ -114,6 +114,12 @@ class Result(models.Model):
     class Meta:
         ordering = ['-created_at']
         unique_together = ['student', 'subject', 'session', 'term']
+        indexes = [
+            models.Index(fields=['student', 'session', 'term'], name='result_stud_sess_term_idx'),
+            models.Index(fields=['session', 'term'], name='result_sess_term_idx'),
+            models.Index(fields=['subject'], name='result_subject_idx'),
+            models.Index(fields=['-created_at'], name='result_created_idx'),
+        ]
 
 
 class ResultSummary(models.Model):
@@ -178,4 +184,9 @@ class ResultSummary(models.Model):
         ordering = ['-created_at']
         unique_together = ['student', 'session', 'term']
         verbose_name_plural = 'Result Summaries'
+        indexes = [
+            models.Index(fields=['student', 'session', 'term'], name='summary_stud_sess_term_idx'),
+            models.Index(fields=['session', 'term'], name='summary_sess_term_idx'),
+            models.Index(fields=['-created_at'], name='summary_created_idx'),
+        ]
 

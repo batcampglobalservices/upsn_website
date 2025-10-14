@@ -9,6 +9,7 @@ pytz
 sqlparse
 psycopg2-binary
 python-dotenv
+python-decouple
 gunicorn
 whitenoise
 django-filter>=23.0

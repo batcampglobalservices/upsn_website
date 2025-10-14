@@ -33,6 +33,11 @@ class CustomUser(AbstractUser):
     
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['role'], name='user_role_idx'),
+            models.Index(fields=['is_active'], name='user_active_idx'),
+            models.Index(fields=['-created_at'], name='user_created_idx'),
+        ]
 
 
 class StudentProfile(models.Model):
@@ -52,3 +57,7 @@ class StudentProfile(models.Model):
     
     class Meta:
         ordering = ['user__full_name']
+        indexes = [
+            models.Index(fields=['student_class'], name='student_class_idx'),
+            models.Index(fields=['user'], name='student_user_idx'),
+        ]

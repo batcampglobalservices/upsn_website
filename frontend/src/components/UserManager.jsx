@@ -58,6 +58,9 @@ const UserManager = () => {
 
     try {
       if (editingUser) {
+        console.log('=== UPDATING USER ===');
+        console.log('Editing user ID:', editingUser.id);
+        
         // Update user - only include password if it was changed
         const updateData = {
           username: formData.username,  // Include username to avoid validation errors
@@ -69,23 +72,40 @@ const UserManager = () => {
         if (formData.password) {
           updateData.password = formData.password;
         }
+        console.log('Update data:', updateData);
+        
         await userAPI.updateUser(editingUser.id, updateData);
+        console.log('✅ User updated');
         
         // Update student profile class if current role is student
         if (formData.role === 'student') {
+          console.log('Updating student class assignment...');
+          console.log('Selected class ID:', formData.student_class);
+          
           // Try to get or create student profile
           try {
             const profilesResponse = await studentAPI.getProfiles({ user: editingUser.id });
             const profiles = profilesResponse.data.results || profilesResponse.data;
+            console.log('Student profiles found:', profiles);
             
             if (profiles && profiles.length > 0) {
+              const profileId = profiles[0].id;
+              const classValue = formData.student_class ? parseInt(formData.student_class) : null;
+              console.log('Updating profile ID:', profileId, 'with class:', classValue);
+              
               // Update existing profile
-              await studentAPI.updateProfile(profiles[0].id, {
-                student_class: formData.student_class || null,
+              await studentAPI.updateProfile(profileId, {
+                student_class: classValue,
               });
+              console.log('✅ Profile class updated successfully!');
+            } else {
+              console.warn('⚠️ No student profile found for user');
+              alert('User updated but student profile not found. Contact administrator.');
             }
           } catch (profileError) {
-            console.error('Error updating student profile:', profileError);
+            console.error('❌ Error updating student profile:', profileError);
+            console.error('Profile error response:', profileError.response?.data);
+            alert('User updated, but failed to update class assignment. Please try again or contact administrator.');
           }
         }
         
@@ -97,6 +117,7 @@ const UserManager = () => {
           return;
         }
         
+        console.log('=== CREATING NEW USER ===');
         const userData = {
           username: formData.username,
           password: formData.password,
@@ -105,17 +126,46 @@ const UserManager = () => {
           email: formData.email,
           phone_number: formData.phone_number,
         };
+        console.log('User data:', userData);
         
         const userResponse = await userAPI.createUser(userData);
+        console.log('User created:', userResponse.data);
         
         // If creating a student, update the student profile with class
-        if (formData.role === 'student' && formData.student_class) {
-          // Get the student profile that was auto-created
-          const profiles = await studentAPI.getProfiles({ user: userResponse.data.id });
-          if (profiles.data && profiles.data.length > 0) {
-            await studentAPI.updateProfile(profiles.data[0].id, {
-              student_class: formData.student_class,
-            });
+        if (formData.role === 'student') {
+          console.log('User is a student, checking for class assignment...');
+          console.log('Selected class ID:', formData.student_class);
+          
+          if (formData.student_class) {
+            // Wait a moment for the profile to be created
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            try {
+              // Get the student profile that was auto-created
+              console.log('Fetching student profiles for user:', userResponse.data.id);
+              const profilesResponse = await studentAPI.getProfiles({ user: userResponse.data.id });
+              const profiles = profilesResponse.data.results || profilesResponse.data;
+              console.log('Student profiles found:', profiles);
+              
+              if (profiles && profiles.length > 0) {
+                const profileId = profiles[0].id;
+                console.log('Updating profile ID:', profileId, 'with class:', formData.student_class);
+                
+                await studentAPI.updateProfile(profileId, {
+                  student_class: parseInt(formData.student_class),
+                });
+                console.log('✅ Profile updated with class successfully!');
+              } else {
+                console.warn('⚠️ No student profile found for user');
+                alert('User created but could not assign class. Please edit the user to assign a class.');
+              }
+            } catch (profileError) {
+              console.error('❌ Error updating student profile:', profileError);
+              console.error('Profile error details:', profileError.response?.data);
+              alert('User created successfully, but failed to assign class. You can edit the user to assign a class.');
+            }
+          } else {
+            console.log('No class selected for this student');
           }
         }
         

@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
 from django.db.models import Q
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from .models import Result, AcademicSession, ResultSummary
 from .serializers import (
     ResultSerializer, ResultCreateSerializer, AcademicSessionSerializer,
@@ -26,7 +28,13 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
             return [IsAdmin()]
         return [IsAuthenticated()]
     
+    @method_decorator(cache_page(300))  # Cache for 5 minutes
+    def list(self, request, *args, **kwargs):
+        """Cached list of academic sessions"""
+        return super().list(request, *args, **kwargs)
+    
     @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(300))  # Cache for 5 minutes
     def active(self, request):
         """Get the active academic session"""
         active_session = AcademicSession.objects.filter(is_active=True).first()
@@ -56,18 +64,27 @@ class ResultViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
+        # Optimize queries with select_related to prevent N+1 queries
+        base_queryset = Result.objects.select_related(
+            'student', 
+            'subject', 
+            'session',
+            'student__student_profile',
+            'student__student_profile__student_class'
+        )
+        
         if user.role == 'admin':
-            return Result.objects.all()
+            return base_queryset.all()
         elif user.role == 'teacher':
             # Teachers can see results for students in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
-            return Result.objects.filter(
+            return base_queryset.filter(
                 student__student_profile__student_class__in=teacher_classes
             )
         elif user.role == 'student':
             # Students can only see their own results
-            return Result.objects.filter(student=user)
+            return base_queryset.filter(student=user)
         return Result.objects.none()
     
     def get_permissions(self):
@@ -77,9 +94,44 @@ class ResultViewSet(viewsets.ModelViewSet):
             return [IsAdmin()]
         return [IsAuthenticated()]
     
+    def create(self, request, *args, **kwargs):
+        """Create a new result and auto-generate summary"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        
+        # Auto-generate or update result summary for this student, session, and term
+        self._update_result_summary(result.student, result.session, result.term)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """Update result and regenerate summary"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        
+        # Regenerate result summary
+        self._update_result_summary(result.student, result.session, result.term)
+        
+        return Response(serializer.data)
+    
+    def _update_result_summary(self, student, session, term):
+        """Generate or update result summary for a student"""
+        summary, created = ResultSummary.objects.get_or_create(
+            student=student,
+            session=session,
+            term=term
+        )
+        summary.calculate_summary()
+        return summary
+    
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
-        """Create multiple results at once"""
+        """Create multiple results at once and auto-generate summaries"""
         serializer = BulkResultCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -90,6 +142,7 @@ class ResultViewSet(viewsets.ModelViewSet):
         
         created_results = []
         errors = []
+        students_to_update = set()
         
         for result_data in results_data:
             try:
@@ -105,16 +158,22 @@ class ResultViewSet(viewsets.ModelViewSet):
                     }
                 )
                 created_results.append(result)
+                students_to_update.add(result.student)
             except Exception as e:
                 errors.append({
                     'student_id': result_data.get('student_id'),
                     'error': str(e)
                 })
         
+        # Auto-generate summaries for all affected students
+        for student in students_to_update:
+            self._update_result_summary(student, session, term)
+        
         return Response({
             'message': f'{len(created_results)} results created/updated successfully',
             'created': len(created_results),
-            'errors': errors
+            'errors': errors,
+            'summaries_updated': len(students_to_update)
         }, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
@@ -129,7 +188,10 @@ class ResultViewSet(viewsets.ModelViewSet):
         session_id = request.query_params.get('session')
         term = request.query_params.get('term')
         
-        results = Result.objects.filter(student=request.user)
+        # Optimized query with select_related
+        results = Result.objects.filter(student=request.user).select_related(
+            'subject', 'session'
+        )
         
         if session_id:
             results = results.filter(session_id=session_id)
@@ -151,17 +213,25 @@ class ResultSummaryViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
+        # Optimize with select_related to prevent N+1 queries
+        base_queryset = ResultSummary.objects.select_related(
+            'student',
+            'session',
+            'student__student_profile',
+            'student__student_profile__student_class'
+        )
+        
         if user.role == 'admin':
-            return ResultSummary.objects.all()
+            return base_queryset.all()
         elif user.role == 'teacher':
             # Teachers can see summaries for students in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
-            return ResultSummary.objects.filter(
+            return base_queryset.filter(
                 student__student_profile__student_class__in=teacher_classes
             )
         elif user.role == 'student':
-            return ResultSummary.objects.filter(student=user)
+            return base_queryset.filter(student=user)
         return ResultSummary.objects.none()
     
     def get_permissions(self):

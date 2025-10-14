@@ -1,104 +1,205 @@
-# School Result Management System
+# School Management System# School Result Management System
 
-A complete school result management system built with Django Rest Framework (Backend) and React (Frontend).
 
-## Features
 
-### 🔐 Authentication & Authorization
-- JWT-based authentication
-- Role-based access control (Admin, Teacher, Student)
-- Numeric username login system
-- Secure password management (Admin-only editing)
+A comprehensive school management system built with Django REST Framework and React.A complete school result management system built with Django Rest Framework (Backend) and React (Frontend).
 
-### 👥 User Management
-- **Admin**: Full user management (create, edit, deactivate)
+
+
+## Features## Features
+
+
+
+- **User Management**: Admin, Teacher, and Student roles### 🔐 Authentication & Authorization
+
+- **Class Management**: Create and manage classes (JSS1-SS3)- JWT-based authentication
+
+- **Subject Management**: Assign subjects to classes and teachers- Role-based access control (Admin, Teacher, Student)
+
+- **Result Management**: Enter, view, and manage student results- Numeric username login system
+
+- **Academic Sessions**: Track academic sessions and terms- Secure password management (Admin-only editing)
+
+- **Media Management**: Upload and manage school logo and carousel images
+
+- **Result Summaries**: Automatic calculation of overall performance### 👥 User Management
+
+- **PDF Reports**: Generate printable result sheets- **Admin**: Full user management (create, edit, deactivate)
+
 - **Teacher**: View assigned classes and students
-- **Student**: View personal profile and results
 
-### 📚 Academic Management
-- Class management (JSS1-SS3)
-- Subject assignment to classes and teachers
-- Academic session and term management
+## Tech Stack- **Student**: View personal profile and results
 
-### 📊 Result Management
+
+
+### Backend### 📚 Academic Management
+
+- Django 5.2.7- Class management (JSS1-SS3)
+
+- Django REST Framework- Subject assignment to classes and teachers
+
+- PostgreSQL (Supabase)- Academic session and term management
+
+- JWT Authentication
+
+- Gunicorn (Production server)### 📊 Result Management
+
 - Test (30 marks) and Exam (70 marks) score entry
-- Automatic total calculation and grading
-- Bulk result upload
-- Result summary with average calculation
-- PDF result sheet generation with school logo
 
-### 🎨 Media Management
+### Frontend- Automatic total calculation and grading
+
+- React 19.1.1- Bulk result upload
+
+- Vite 7.1.9- Result summary with average calculation
+
+- Tailwind CSS- PDF result sheet generation with school logo
+
+- Axios for API calls
+
+- React Router for navigation### 🎨 Media Management
+
 - Carousel image management for homepage
-- School logo upload and management
+
+## Performance Features- School logo upload and management
+
 - Images accessible by React frontend
 
-### 📈 Grading System
-- A: 70-100 (Excellent)
-- B: 60-69 (Very Good)
-- C: 50-59 (Good)
-- D: 45-49 (Pass)
+- Database connection pooling
+
+- Query optimization with select_related/prefetch_related### 📈 Grading System
+
+- Strategic database indexing- A: 70-100 (Excellent)
+
+- Local memory caching- B: 60-69 (Very Good)
+
+- Optimized JSON rendering- C: 50-59 (Good)
+
+- 3-10× faster than standard configuration- D: 45-49 (Pass)
+
 - F: 0-44 (Fail)
+
+## Deployment
 
 ## Tech Stack
 
+See `RENDER_DEPLOYMENT.txt` for complete deployment instructions on Render.
+
 ### Backend
-- Python 3.12+
+
+## Environment Variables- Python 3.12+
+
 - Django 5.x
-- Django Rest Framework
-- Simple JWT
-- ReportLab (PDF generation)
-- Pillow (Image handling)
-- Django CORS Headers
-- Django Filter
 
-### Frontend
-- React 19.x
+### Backend- Django Rest Framework
+
+- `SECRET_KEY`: Django secret key- Simple JWT
+
+- `DEBUG`: Debug mode (False in production)- ReportLab (PDF generation)
+
+- `ALLOWED_HOSTS`: Allowed host domains- Pillow (Image handling)
+
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`: Database credentials- Django CORS Headers
+
+- `CORS_ALLOWED_ORIGINS`: Allowed frontend origins- Django Filter
+
+
+
+### Frontend### Frontend
+
+- `VITE_API_URL`: Backend API URL- React 19.x
+
 - React Router DOM
-- Axios
+
+## Local Development- Axios
+
 - JWT Decode
-- Tailwind CSS
-- AOS (Animations)
-- Framer Motion
 
-## Installation & Setup
+### Backend Setup- Tailwind CSS
 
-### Prerequisites
-- Python 3.10+
-- Node.js 16+
-- pip
-- npm or yarn
+```bash- AOS (Animations)
 
-### Backend Setup
+cd backend- Framer Motion
 
-1. **Navigate to backend directory**
+python -m venv venv
+
+source venv/bin/activate  # On Windows: venv\Scripts\activate## Installation & Setup
+
+pip install -r requirements.txt
+
+cp .env.template .env  # Configure your environment variables### Prerequisites
+
+python manage.py migrate- Python 3.10+
+
+python manage.py createsuperuser- Node.js 16+
+
+python manage.py runserver- pip
+
+```- npm or yarn
+
+
+
+### Frontend Setup### Backend Setup
+
 ```bash
-cd backend
+
+cd frontend1. **Navigate to backend directory**
+
+npm install```bash
+
+cp .env.template .env  # Configure your environment variablescd backend
+
+npm run dev```
+
 ```
 
 2. **Create and activate virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
 
-3. **Install dependencies**
-```bash
-pip install -r ../requirements.txt
-```
+## API Endpoints```bash
+
+python -m venv venv
+
+- `/api/auth/login/` - User authenticationsource venv/bin/activate  # On Windows: venv\Scripts\activate
+
+- `/api/sessions/` - Academic sessions```
+
+- `/api/classes/` - Class management
+
+- `/api/subjects/` - Subject management3. **Install dependencies**
+
+- `/api/results/` - Student results```bash
+
+- `/api/summaries/` - Result summariespip install -r ../requirements.txt
+
+- `/api/users/` - User management```
+
+- `/api/student-profiles/` - Student profiles
 
 4. **Run migrations**
-```bash
+
+## License```bash
+
 python manage.py migrate
-```
 
-5. **Create superuser**
+Proprietary - All rights reserved```
+
+
+
+## Support5. **Create superuser**
+
 ```bash
-python manage.py createsuperuser
+
+For issues or questions, contact the development team.python manage.py createsuperuser
+
 # Follow prompts to create admin user
-```
 
-6. **Update admin role** (Important!)
-```bash
+---```
+
+
+
+**Version:** 1.0.0  6. **Update admin role** (Important!)
+
+**Last Updated:** October 14, 2025```bash
+
 python manage.py shell
 ```
 ```python

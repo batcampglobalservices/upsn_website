@@ -54,7 +54,9 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',  # Cache middleware (first)
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # Cache middleware (last)
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -96,11 +98,29 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),
         'PORT': config('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
         'OPTIONS': {
             'sslmode': 'require',
+            'connect_timeout': 10,
         },
     }
 }
+
+# Caching Configuration - Django Local Memory Cache (no Redis needed)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
+# Cache settings
+CACHE_MIDDLEWARE_ALIAS = 'default'
+CACHE_MIDDLEWARE_SECONDS = 300  # 5 minutes
+CACHE_MIDDLEWARE_KEY_PREFIX = ''
 
 
 # Password validation
@@ -164,6 +184,16 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Performance optimizations
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+    ),
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'COERCE_DECIMAL_TO_STRING': False,
+    'COMPACT_JSON': True,
 }
 
 # JWT Configuration

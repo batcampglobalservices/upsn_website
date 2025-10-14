@@ -35,6 +35,11 @@ class Class(models.Model):
     class Meta:
         ordering = ['level', 'name']
         verbose_name_plural = 'Classes'
+        indexes = [
+            models.Index(fields=['level'], name='class_level_idx'),
+            models.Index(fields=['assigned_teacher'], name='class_teacher_idx'),
+            models.Index(fields=['-created_at'], name='class_created_idx'),
+        ]
 
 
 class Subject(models.Model):
@@ -66,3 +71,8 @@ class Subject(models.Model):
     class Meta:
         ordering = ['assigned_class', 'name']
         unique_together = ['name', 'assigned_class']
+        indexes = [
+            models.Index(fields=['assigned_class'], name='subject_class_idx'),
+            models.Index(fields=['assigned_teacher'], name='subject_teacher_idx'),
+            models.Index(fields=['-created_at'], name='subject_created_idx'),
+        ]

@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from .models import CustomUser, StudentProfile
 from .serializers import (
     UserSerializer, StudentProfileSerializer, LoginSerializer, 
@@ -17,12 +19,15 @@ class UserViewSet(viewsets.ModelViewSet):
     ViewSet for User CRUD operations
     Only accessible by Admin
     """
-    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
     filterset_fields = ['role', 'is_active']
     search_fields = ['username', 'full_name', 'email']
     ordering_fields = ['created_at', 'full_name']
+    
+    def get_queryset(self):
+        """Optimize with select_related for student profiles"""
+        return CustomUser.objects.select_related('student_profile').all()
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -52,22 +57,28 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
     Teachers can view and edit students in their class
     Students can only view their own profile
     """
-    queryset = StudentProfile.objects.all()
     serializer_class = StudentProfileSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         user = self.request.user
+        # Optimize with select_related to prevent N+1 queries
+        base_queryset = StudentProfile.objects.select_related(
+            'user', 
+            'student_class',
+            'student_class__assigned_teacher'
+        )
+        
         if user.role == 'admin':
-            return StudentProfile.objects.all()
+            return base_queryset.all()
         elif user.role == 'teacher':
             # Teachers can only see students in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
-            return StudentProfile.objects.filter(student_class__in=teacher_classes)
+            return base_queryset.filter(student_class__in=teacher_classes)
         elif user.role == 'student':
             # Students can only see their own profile
-            return StudentProfile.objects.filter(user=user)
+            return base_queryset.filter(user=user)
         return StudentProfile.objects.none()
 
 

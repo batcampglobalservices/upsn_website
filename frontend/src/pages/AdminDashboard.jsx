@@ -8,6 +8,7 @@ import ClassManager from '../components/ClassManager';
 import SubjectManager from '../components/SubjectManager';
 import ResultReleaseManager from '../components/ResultReleaseManager';
 import SessionManager from '../components/SessionManager';
+import ResultManager from '../components/ResultManager';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -38,7 +39,7 @@ const AdminDashboard = () => {
       case 'sessions':
         return <SessionManager />;
       case 'results':
-        return <ResultReleaseManager />;
+        return <ResultManager />;
       case 'carousel':
         return <CarouselManager />;
       case 'logo':
