@@ -17,12 +17,12 @@ class IsTeacher(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.role == 'teacher'
 
 
-class IsStudent(permissions.BasePermission):
+class IsPupil(permissions.BasePermission):
     """
-    Permission class to allow only Student users
+    Permission class to allow only Pupil users
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role == 'student'
+        return request.user and request.user.is_authenticated and request.user.role == 'pupil'
 
 
 class IsAdminOrTeacher(permissions.BasePermission):

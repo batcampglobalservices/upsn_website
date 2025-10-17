@@ -26,7 +26,7 @@ class AcademicSession(models.Model):
     result_release_date = models.DateTimeField(
         null=True, 
         blank=True,
-        help_text="Date and time when results will be released to students"
+        help_text="Date and time when results will be released to pupils"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -39,7 +39,7 @@ class AcademicSession(models.Model):
 
 class Result(models.Model):
     """
-    Model for student results
+    Model for pupil results
     """
     TERM_CHOICES = (
         ('first', 'First Term'),
@@ -55,11 +55,11 @@ class Result(models.Model):
         ('F', 'F (Fail)'),
     )
     
-    student = models.ForeignKey(
+    pupil = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='results',
-        limit_choices_to={'role': 'student'}
+        limit_choices_to={'role': 'pupil'}
     )
     subject = models.ForeignKey(
         'classes.Subject',
@@ -109,13 +109,13 @@ class Result(models.Model):
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"{self.student.full_name} - {self.subject.name} - {self.term} {self.session}"
+        return f"{self.pupil.full_name} - {self.subject.name} - {self.term} {self.session}"
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ['student', 'subject', 'session', 'term']
+        unique_together = ['pupil', 'subject', 'session', 'term']
         indexes = [
-            models.Index(fields=['student', 'session', 'term'], name='result_stud_sess_term_idx'),
+            models.Index(fields=['pupil', 'session', 'term'], name='result_pupil_sess_term_idx'),
             models.Index(fields=['session', 'term'], name='result_sess_term_idx'),
             models.Index(fields=['subject'], name='result_subject_idx'),
             models.Index(fields=['-created_at'], name='result_created_idx'),
@@ -126,7 +126,7 @@ class ResultSummary(models.Model):
     """
     Model for overall result summary per term/session
     """
-    student = models.ForeignKey(
+    pupil = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='result_summaries'
@@ -149,7 +149,7 @@ class ResultSummary(models.Model):
     def calculate_summary(self):
         """Calculate and update summary from results"""
         results = Result.objects.filter(
-            student=self.student,
+            pupil=self.pupil,
             session=self.session,
             term=self.term
         )
@@ -178,14 +178,14 @@ class ResultSummary(models.Model):
         self.save()
     
     def __str__(self):
-        return f"{self.student.full_name} - {self.term} {self.session}"
+        return f"{self.pupil.full_name} - {self.term} {self.session}"
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ['student', 'session', 'term']
+        unique_together = ['pupil', 'session', 'term']
         verbose_name_plural = 'Result Summaries'
         indexes = [
-            models.Index(fields=['student', 'session', 'term'], name='summary_stud_sess_term_idx'),
+            models.Index(fields=['pupil', 'session', 'term'], name='summary_pupil_sess_term_idx'),
             models.Index(fields=['session', 'term'], name='summary_sess_term_idx'),
             models.Index(fields=['-created_at'], name='summary_created_idx'),
         ]

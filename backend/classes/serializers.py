@@ -23,16 +23,16 @@ class ClassSerializer(serializers.ModelSerializer):
     """
     assigned_teacher_name = serializers.CharField(source='assigned_teacher.full_name', read_only=True)
     subjects = SubjectSerializer(many=True, read_only=True)
-    student_count = serializers.SerializerMethodField()
+    pupil_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Class
         fields = ['id', 'name', 'level', 'assigned_teacher', 'assigned_teacher_name', 
-                  'description', 'subjects', 'student_count', 'created_at', 'updated_at']
+                  'description', 'subjects', 'pupil_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
-    def get_student_count(self, obj):
-        return obj.students.count()
+    def get_pupil_count(self, obj):
+        return obj.pupils.count()
 
 
 class ClassListSerializer(serializers.ModelSerializer):
@@ -40,13 +40,13 @@ class ClassListSerializer(serializers.ModelSerializer):
     Simplified serializer for class lists
     """
     assigned_teacher_name = serializers.CharField(source='assigned_teacher.full_name', read_only=True)
-    student_count = serializers.SerializerMethodField()
+    pupil_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Class
         fields = ['id', 'name', 'level', 'assigned_teacher', 'assigned_teacher_name', 
-                  'student_count', 'created_at']
+                  'pupil_count', 'created_at']
         read_only_fields = ['id', 'created_at']
     
-    def get_student_count(self, obj):
-        return obj.students.count()
+    def get_pupil_count(self, obj):
+        return obj.pupils.count()

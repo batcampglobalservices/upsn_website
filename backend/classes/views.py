@@ -14,7 +14,7 @@ class ClassViewSet(viewsets.ModelViewSet):
     ViewSet for Class CRUD operations
     Admin: Full access
     Teacher: View only their assigned classes
-    Student: View their own class
+    Pupil: View their own class
     """
     permission_classes = [IsAuthenticated]
     filterset_fields = ['level', 'assigned_teacher']
@@ -34,18 +34,18 @@ class ClassViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Optimize with select_related and prefetch_related"""
         user = self.request.user
-        base_queryset = Class.objects.select_related('assigned_teacher').prefetch_related('students')
+        base_queryset = Class.objects.select_related('assigned_teacher').prefetch_related('pupils')
         
         if user.role == 'admin':
             return base_queryset.all()
         elif user.role == 'teacher':
             return base_queryset.filter(assigned_teacher=user)
-        elif user.role == 'student':
-            # Students see only their own class
+        elif user.role == 'pupil':
+            # Pupils see only their own class
             try:
-                student_profile = user.student_profile
-                if student_profile.student_class:
-                    return base_queryset.filter(id=student_profile.student_class.id)
+                pupil_profile = user.pupil_profile
+                if pupil_profile.pupil_class:
+                    return base_queryset.filter(id=pupil_profile.pupil_class.id)
             except:
                 pass
         return Class.objects.none()
@@ -56,13 +56,13 @@ class ClassViewSet(viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
     
     @action(detail=True, methods=['get'])
-    def students(self, request, pk=None):
-        """Get all students in a class"""
+    def pupils(self, request, pk=None):
+        """Get all pupils in a class"""
         class_obj = self.get_object()
-        from accounts.serializers import StudentProfileSerializer
-        # Optimize student query with select_related
-        students = class_obj.students.select_related('user').all()
-        serializer = StudentProfileSerializer(students, many=True)
+        from accounts.serializers import PupilProfileSerializer
+        # Optimize pupil query with select_related
+        pupils = class_obj.pupils.select_related('user').all()
+        serializer = PupilProfileSerializer(pupils, many=True)
         return Response(serializer.data)
 
 

@@ -10,13 +10,13 @@ class AcademicSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):
-    list_display = ['student', 'subject', 'session', 'term', 'test_score', 'exam_score', 'total', 'grade']
+    list_display = ['pupil', 'subject', 'session', 'term', 'test_score', 'exam_score', 'total', 'grade']
     list_filter = ['session', 'term', 'grade']
-    search_fields = ['student__full_name', 'subject__name']
+    search_fields = ['pupil__full_name', 'subject__name']
 
 
 @admin.register(ResultSummary)
 class ResultSummaryAdmin(admin.ModelAdmin):
-    list_display = ['student', 'session', 'term', 'total_subjects', 'average_score', 'overall_grade']
+    list_display = ['pupil', 'session', 'term', 'total_subjects', 'average_score', 'overall_grade']
     list_filter = ['session', 'term', 'overall_grade']
-    search_fields = ['student__full_name']
+    search_fields = ['pupil__full_name']

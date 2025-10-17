@@ -11,7 +11,7 @@ import os
 
 def generate_result_pdf(result_summary):
     """
-    Generate a PDF result sheet for a student
+    Generate a PDF result sheet for a pupil
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
@@ -58,24 +58,24 @@ def generate_result_pdf(result_summary):
     
     # School name and title
     elements.append(Paragraph("SCHOOL NAME", title_style))
-    elements.append(Paragraph("STUDENT RESULT SHEET", heading_style))
+    elements.append(Paragraph("PUPIL RESULT SHEET", heading_style))
     elements.append(Spacer(1, 12))
     
-    # Student information
-    student = result_summary.student
+    # Pupil information
+    pupil = result_summary.pupil
     try:
-        student_class = student.student_profile.student_class.name
+        pupil_class = pupil.pupil_profile.pupil_class.name
     except:
-        student_class = "N/A"
+        pupil_class = "N/A"
     
-    student_info = [
-        ['Student Name:', student.full_name, 'Class:', student_class],
-        ['Student ID:', student.username, 'Session:', result_summary.session.name],
+    pupil_info = [
+        ['Pupil Name:', pupil.full_name, 'Class:', pupil_class],
+        ['Pupil ID:', pupil.username, 'Session:', result_summary.session.name],
         ['Term:', result_summary.get_term_display(), '', ''],
     ]
     
-    student_table = Table(student_info, colWidths=[2*inch, 2.5*inch, 1.5*inch, 2*inch])
-    student_table.setStyle(TableStyle([
+    pupil_table = Table(pupil_info, colWidths=[2*inch, 2.5*inch, 1.5*inch, 2*inch])
+    pupil_table.setStyle(TableStyle([
         ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
         ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
         ('FONT', (2, 0), (2, -1), 'Helvetica-Bold', 10),
@@ -84,13 +84,13 @@ def generate_result_pdf(result_summary):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
     
-    elements.append(student_table)
+    elements.append(pupil_table)
     elements.append(Spacer(1, 20))
     
     # Results table
     from .models import Result
     results = Result.objects.filter(
-        student=student,
+        pupil=pupil,
         session=result_summary.session,
         term=result_summary.term
     ).order_by('subject__name')

@@ -11,7 +11,7 @@ from .serializers import (
     ResultSerializer, ResultCreateSerializer, AcademicSessionSerializer,
     ResultSummarySerializer, BulkResultCreateSerializer
 )
-from accounts.permissions import IsAdmin, IsAdminOrTeacher, IsStudent
+from accounts.permissions import IsAdmin, IsAdminOrTeacher, IsPupil
 from .utils import generate_result_pdf
 
 
@@ -49,12 +49,12 @@ class ResultViewSet(viewsets.ModelViewSet):
     ViewSet for Result CRUD operations
     Admin: Full access
     Teacher: Can create/edit results for their assigned classes
-    Student: Read-only access to their own results
+    Pupil: Read-only access to their own results
     """
     queryset = Result.objects.all()
     permission_classes = [IsAuthenticated]
-    filterset_fields = ['student', 'subject', 'session', 'term', 'grade']
-    search_fields = ['student__full_name', 'subject__name']
+    filterset_fields = ['pupil', 'subject', 'session', 'term', 'grade']
+    search_fields = ['pupil__full_name', 'subject__name']
     ordering_fields = ['created_at', 'total']
     
     def get_serializer_class(self):
@@ -66,25 +66,25 @@ class ResultViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Optimize queries with select_related to prevent N+1 queries
         base_queryset = Result.objects.select_related(
-            'student', 
+            'pupil', 
             'subject', 
             'session',
-            'student__student_profile',
-            'student__student_profile__student_class'
+            'pupil__pupil_profile',
+            'pupil__pupil_profile__pupil_class'
         )
         
         if user.role == 'admin':
             return base_queryset.all()
         elif user.role == 'teacher':
-            # Teachers can see results for students in their assigned classes
+            # Teachers can see results for pupils in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
             return base_queryset.filter(
-                student__student_profile__student_class__in=teacher_classes
+                pupil__pupil_profile__pupil_class__in=teacher_classes
             )
-        elif user.role == 'student':
-            # Students can only see their own results
-            return base_queryset.filter(student=user)
+        elif user.role == 'pupil':
+            # Pupils can only see their own results
+            return base_queryset.filter(pupil=user)
         return Result.objects.none()
     
     def get_permissions(self):
@@ -100,8 +100,8 @@ class ResultViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
         
-        # Auto-generate or update result summary for this student, session, and term
-        self._update_result_summary(result.student, result.session, result.term)
+        # Auto-generate or update result summary for this pupil, session, and term
+        self._update_result_summary(result.pupil, result.session, result.term)
         
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -115,14 +115,14 @@ class ResultViewSet(viewsets.ModelViewSet):
         result = serializer.save()
         
         # Regenerate result summary
-        self._update_result_summary(result.student, result.session, result.term)
+        self._update_result_summary(result.pupil, result.session, result.term)
         
         return Response(serializer.data)
     
-    def _update_result_summary(self, student, session, term):
-        """Generate or update result summary for a student"""
+    def _update_result_summary(self, pupil, session, term):
+        """Generate or update result summary for a pupil"""
         summary, created = ResultSummary.objects.get_or_create(
-            student=student,
+            pupil=pupil,
             session=session,
             term=term
         )
@@ -142,12 +142,12 @@ class ResultViewSet(viewsets.ModelViewSet):
         
         created_results = []
         errors = []
-        students_to_update = set()
+        pupils_to_update = set()
         
         for result_data in results_data:
             try:
                 result, created = Result.objects.update_or_create(
-                    student_id=result_data['student_id'],
+                    pupil_id=result_data['pupil_id'],
                     subject=subject,
                     session=session,
                     term=term,
@@ -158,30 +158,30 @@ class ResultViewSet(viewsets.ModelViewSet):
                     }
                 )
                 created_results.append(result)
-                students_to_update.add(result.student)
+                pupils_to_update.add(result.pupil)
             except Exception as e:
                 errors.append({
-                    'student_id': result_data.get('student_id'),
+                    'pupil_id': result_data.get('pupil_id'),
                     'error': str(e)
                 })
         
-        # Auto-generate summaries for all affected students
-        for student in students_to_update:
-            self._update_result_summary(student, session, term)
+        # Auto-generate summaries for all affected pupils
+        for pupil in pupils_to_update:
+            self._update_result_summary(pupil, session, term)
         
         return Response({
             'message': f'{len(created_results)} results created/updated successfully',
             'created': len(created_results),
             'errors': errors,
-            'summaries_updated': len(students_to_update)
+            'summaries_updated': len(pupils_to_update)
         }, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
     def my_results(self, request):
-        """Get results for the logged-in student"""
-        if request.user.role != 'student':
+        """Get results for the logged-in pupil"""
+        if request.user.role != 'pupil':
             return Response(
-                {'error': 'This endpoint is only for students'},
+                {'error': 'This endpoint is only for pupils'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -189,7 +189,7 @@ class ResultViewSet(viewsets.ModelViewSet):
         term = request.query_params.get('term')
         
         # Optimized query with select_related
-        results = Result.objects.filter(student=request.user).select_related(
+        results = Result.objects.filter(pupil=request.user).select_related(
             'subject', 'session'
         )
         
@@ -209,29 +209,29 @@ class ResultSummaryViewSet(viewsets.ModelViewSet):
     queryset = ResultSummary.objects.all()
     serializer_class = ResultSummarySerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ['student', 'session', 'term']
+    filterset_fields = ['pupil', 'session', 'term']
     
     def get_queryset(self):
         user = self.request.user
         # Optimize with select_related to prevent N+1 queries
         base_queryset = ResultSummary.objects.select_related(
-            'student',
+            'pupil',
             'session',
-            'student__student_profile',
-            'student__student_profile__student_class'
+            'pupil__pupil_profile',
+            'pupil__pupil_profile__pupil_class'
         )
         
         if user.role == 'admin':
             return base_queryset.all()
         elif user.role == 'teacher':
-            # Teachers can see summaries for students in their assigned classes
+            # Teachers can see summaries for pupils in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
             return base_queryset.filter(
-                student__student_profile__student_class__in=teacher_classes
+                pupil__pupil_profile__pupil_class__in=teacher_classes
             )
-        elif user.role == 'student':
-            return base_queryset.filter(student=user)
+        elif user.role == 'pupil':
+            return base_queryset.filter(pupil=user)
         return ResultSummary.objects.none()
     
     def get_permissions(self):
@@ -257,26 +257,26 @@ class ResultSummaryViewSet(viewsets.ModelViewSet):
         
         # Return PDF as response
         response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
-        filename = f"Result_{summary.student.username}_{summary.term}_{summary.session.name.replace('/', '-')}.pdf"
+        filename = f"Result_{summary.pupil.username}_{summary.term}_{summary.session.name.replace('/', '-')}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
     
     @action(detail=False, methods=['post'])
     def generate_summary(self, request):
-        """Generate summary for a student, session, and term"""
-        student_id = request.data.get('student')
+        """Generate summary for a pupil, session, and term"""
+        pupil_id = request.data.get('pupil')
         session_id = request.data.get('session')
         term = request.data.get('term')
         
-        if not all([student_id, session_id, term]):
+        if not all([pupil_id, session_id, term]):
             return Response(
-                {'error': 'student, session, and term are required'},
+                {'error': 'pupil, session, and term are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         summary, created = ResultSummary.objects.get_or_create(
-            student_id=student_id,
+            pupil_id=pupil_id,
             session_id=session_id,
             term=term
         )

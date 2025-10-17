@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import CustomUser, StudentProfile
+from .models import CustomUser, PupilProfile
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -8,14 +8,14 @@ class UserSerializer(serializers.ModelSerializer):
     Serializer for CustomUser model
     """
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    student_profile = serializers.SerializerMethodField()
+    pupil_profile = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'password', 'full_name', 'role', 'email', 
-                  'phone_number', 'profile_image', 'is_active', 'student_profile', 
+                  'phone_number', 'profile_image', 'is_active', 'pupil_profile', 
                   'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'student_profile']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'pupil_profile']
         extra_kwargs = {
             'password': {'write_only': True, 'required': False, 'allow_blank': True},
             'email': {'required': False, 'allow_blank': True, 'allow_null': True}
@@ -59,18 +59,18 @@ class UserSerializer(serializers.ModelSerializer):
         
         return value
     
-    def get_student_profile(self, obj):
-        """Return student profile data if user is a student"""
-        if obj.role == 'student':
+    def get_pupil_profile(self, obj):
+        """Return pupil profile data if user is a pupil"""
+        if obj.role == 'pupil':
             try:
-                profile = obj.student_profile
+                profile = obj.pupil_profile
                 return {
                     'id': profile.id,
-                    'student_class': profile.student_class.id if profile.student_class else None,
-                    'student_class_name': profile.student_class.name if profile.student_class else None,
+                    'pupil_class': profile.pupil_class.id if profile.pupil_class else None,
+                    'pupil_class_name': profile.pupil_class.name if profile.pupil_class else None,
                     'admission_number': profile.admission_number,
                 }
-            except StudentProfile.DoesNotExist:
+            except PupilProfile.DoesNotExist:
                 return None
         return None
     
@@ -86,9 +86,9 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
         
-        # Auto-create StudentProfile if role is student
-        if user.role == 'student':
-            StudentProfile.objects.create(user=user)
+        # Auto-create PupilProfile if role is pupil
+        if user.role == 'pupil':
+            PupilProfile.objects.create(user=user)
         
         return user
     
@@ -120,23 +120,23 @@ class UserSerializer(serializers.ModelSerializer):
         
         instance.save()
         
-        # Auto-create StudentProfile if role changed to student and profile doesn't exist
-        if instance.role == 'student':
-            StudentProfile.objects.get_or_create(user=instance)
+        # Auto-create PupilProfile if role changed to pupil and profile doesn't exist
+        if instance.role == 'pupil':
+            PupilProfile.objects.get_or_create(user=instance)
         
         return instance
 
 
-class StudentProfileSerializer(serializers.ModelSerializer):
+class PupilProfileSerializer(serializers.ModelSerializer):
     """
-    Serializer for StudentProfile model
+    Serializer for PupilProfile model
     """
     user = UserSerializer(read_only=True)
-    class_name = serializers.CharField(source='student_class.name', read_only=True)
+    class_name = serializers.CharField(source='pupil_class.name', read_only=True)
     
     class Meta:
-        model = StudentProfile
-        fields = ['id', 'user', 'student_class', 'class_name', 'admission_number', 
+        model = PupilProfile
+        fields = ['id', 'user', 'pupil_class', 'class_name', 'admission_number', 
                   'date_of_birth', 'guardian_name', 'guardian_phone', 'address']
 
 
@@ -180,9 +180,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         
-        # Auto-create StudentProfile if role is student
-        if user.role == 'student':
-            StudentProfile.objects.create(user=user)
+        # Auto-create PupilProfile if role is pupil
+        if user.role == 'pupil':
+            PupilProfile.objects.create(user=user)
         
         return user
 
@@ -191,10 +191,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for user profile view
     """
-    student_profile = StudentProfileSerializer(read_only=True)
+    pupil_profile = PupilProfileSerializer(read_only=True)
     
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'full_name', 'role', 'email', 'phone_number', 
-                  'profile_image', 'student_profile', 'is_active']
+                  'profile_image', 'pupil_profile', 'is_active']
         read_only_fields = ['id', 'username', 'role']

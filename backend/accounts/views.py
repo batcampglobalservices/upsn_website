@@ -6,9 +6,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
-from .models import CustomUser, StudentProfile
+from .models import CustomUser, PupilProfile
 from .serializers import (
-    UserSerializer, StudentProfileSerializer, LoginSerializer, 
+    UserSerializer, PupilProfileSerializer, LoginSerializer, 
     UserCreateSerializer, UserProfileSerializer
 )
 from .permissions import IsAdmin, IsAdminOrTeacher
@@ -26,8 +26,8 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'full_name']
     
     def get_queryset(self):
-        """Optimize with select_related for student profiles"""
-        return CustomUser.objects.select_related('student_profile').all()
+        """Optimize with select_related for pupil profiles"""
+        return CustomUser.objects.select_related('pupil_profile').all()
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -51,35 +51,35 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'message': 'User activated successfully'}, status=status.HTTP_200_OK)
 
 
-class StudentProfileViewSet(viewsets.ModelViewSet):
+class PupilProfileViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for StudentProfile
-    Teachers can view and edit students in their class
-    Students can only view their own profile
+    ViewSet for PupilProfile
+    Teachers can view and edit pupils in their class
+    Pupils can only view their own profile
     """
-    serializer_class = StudentProfileSerializer
+    serializer_class = PupilProfileSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         user = self.request.user
         # Optimize with select_related to prevent N+1 queries
-        base_queryset = StudentProfile.objects.select_related(
+        base_queryset = PupilProfile.objects.select_related(
             'user', 
-            'student_class',
-            'student_class__assigned_teacher'
+            'pupil_class',
+            'pupil_class__assigned_teacher'
         )
         
         if user.role == 'admin':
             return base_queryset.all()
         elif user.role == 'teacher':
-            # Teachers can only see students in their assigned classes
+            # Teachers can only see pupils in their assigned classes
             from classes.models import Class
             teacher_classes = Class.objects.filter(assigned_teacher=user)
-            return base_queryset.filter(student_class__in=teacher_classes)
-        elif user.role == 'student':
-            # Students can only see their own profile
+            return base_queryset.filter(pupil_class__in=teacher_classes)
+        elif user.role == 'pupil':
+            # Pupils can only see their own profile
             return base_queryset.filter(user=user)
-        return StudentProfile.objects.none()
+        return PupilProfile.objects.none()
 
 
 @api_view(['POST'])

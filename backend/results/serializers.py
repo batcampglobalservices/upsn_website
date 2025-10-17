@@ -24,21 +24,21 @@ class ResultSerializer(serializers.ModelSerializer):
     """
     Serializer for Result model
     """
-    student_name = serializers.CharField(source='student.full_name', read_only=True)
+    pupil_name = serializers.CharField(source='pupil.full_name', read_only=True)
     subject_name = serializers.CharField(source='subject.name', read_only=True)
     session_name = serializers.CharField(source='session.name', read_only=True)
-    student_class = serializers.SerializerMethodField()
+    pupil_class = serializers.SerializerMethodField()
     
     class Meta:
         model = Result
-        fields = ['id', 'student', 'student_name', 'student_class', 'subject', 'subject_name', 
+        fields = ['id', 'pupil', 'pupil_name', 'pupil_class', 'subject', 'subject_name', 
                   'session', 'session_name', 'term', 'test_score', 'exam_score', 'total', 
                   'grade', 'teacher_comment', 'created_at', 'updated_at']
         read_only_fields = ['id', 'total', 'grade', 'created_at', 'updated_at']
     
-    def get_student_class(self, obj):
+    def get_pupil_class(self, obj):
         try:
-            return obj.student.student_profile.student_class.name
+            return obj.pupil.pupil_profile.pupil_class.name
         except:
             return None
     
@@ -60,7 +60,7 @@ class ResultCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Result
-        fields = ['student', 'subject', 'session', 'term', 'test_score', 'exam_score', 'teacher_comment']
+        fields = ['pupil', 'subject', 'session', 'term', 'test_score', 'exam_score', 'teacher_comment']
     
     def validate(self, attrs):
         # Ensure test_score is between 0 and 30
@@ -78,28 +78,28 @@ class ResultSummarySerializer(serializers.ModelSerializer):
     """
     Serializer for ResultSummary model
     """
-    student_name = serializers.CharField(source='student.full_name', read_only=True)
+    pupil_name = serializers.CharField(source='pupil.full_name', read_only=True)
     session_name = serializers.CharField(source='session.name', read_only=True)
-    student_class = serializers.SerializerMethodField()
+    pupil_class = serializers.SerializerMethodField()
     results = serializers.SerializerMethodField()
     
     class Meta:
         model = ResultSummary
-        fields = ['id', 'student', 'student_name', 'student_class', 'session', 'session_name', 
+        fields = ['id', 'pupil', 'pupil_name', 'pupil_class', 'session', 'session_name', 
                   'term', 'total_subjects', 'total_score', 'average_score', 'overall_grade', 
                   'principal_comment', 'teacher_comment', 'results', 'created_at', 'updated_at']
         read_only_fields = ['id', 'total_subjects', 'total_score', 'average_score', 
                            'overall_grade', 'created_at', 'updated_at']
     
-    def get_student_class(self, obj):
+    def get_pupil_class(self, obj):
         try:
-            return obj.student.student_profile.student_class.name
+            return obj.pupil.pupil_profile.pupil_class.name
         except:
             return None
     
     def get_results(self, obj):
         results = Result.objects.filter(
-            student=obj.student,
+            pupil=obj.pupil,
             session=obj.session,
             term=obj.term
         )
