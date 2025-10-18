@@ -12,26 +12,63 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in on mount
     const initAuth = () => {
-      const token = localStorage.getItem('access_token');
+      const access = localStorage.getItem('access_token');
+      const refresh = localStorage.getItem('refresh_token');
       const storedUser = localStorage.getItem('user');
 
-      if (token && storedUser) {
+      const finish = () => setLoading(false);
+
+      // Helper: set session from stored user and token
+      const setSessionFromStorage = () => {
         try {
-          const decodedToken = jwtDecode(token);
-          // Check if token is expired
-          if (decodedToken.exp * 1000 > Date.now()) {
+          if (!storedUser) return false;
+          if (!access) return false;
+          const decoded = jwtDecode(access);
+          if (decoded.exp * 1000 > Date.now()) {
             setUser(JSON.parse(storedUser));
             setIsAuthenticated(true);
-          } else {
-            // Token expired, clear storage
-            logout();
+            return true;
           }
-        } catch (error) {
-          console.error('Error decoding token:', error);
-          logout();
+          return false;
+        } catch (e) {
+          console.error('Error decoding token on init:', e);
+          return false;
         }
+      };
+
+      // 1) If access is valid, rehydrate session
+      if (setSessionFromStorage()) {
+        finish();
+        return;
       }
-      setLoading(false);
+
+      // 2) If access missing/expired but refresh exists, try refreshing
+      if (refresh && storedUser) {
+        authAPI
+          .refreshToken(refresh)
+          .then((resp) => {
+            const { access: newAccess } = resp.data || {};
+            if (newAccess) {
+              localStorage.setItem('access_token', newAccess);
+              // Rehydrate user
+              setUser(JSON.parse(storedUser));
+              setIsAuthenticated(true);
+            } else {
+              // No access returned, logout
+              logout();
+            }
+          })
+          .catch((err) => {
+            console.warn('Auto-refresh on init failed:', err?.response?.data || err?.message);
+            logout();
+          })
+          .finally(finish);
+        return;
+      }
+
+      // 3) No valid tokens, ensure logged out
+      logout();
+      finish();
     };
 
     initAuth();
