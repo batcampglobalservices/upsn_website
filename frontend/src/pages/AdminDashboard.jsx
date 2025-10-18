@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFetchData } from '../hooks/useData';
 import CarouselManager from '../components/CarouselManager';
@@ -13,6 +13,16 @@ import ResultManager from '../components/ResultManager';
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [quickAction, setQuickAction] = useState(null);
+  const [actionTrigger, setActionTrigger] = useState(0);
+
+  const openQuick = (tab, action) => {
+    setActiveTab(tab);
+    setQuickAction(action);
+    setActionTrigger((t) => t + 1);
+    // small UX: scroll content to top so modal is visible
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+  };
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const tabs = [
@@ -29,15 +39,39 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewSection />;
+        return <OverviewSection onNavigate={setActiveTab} onQuickAction={openQuick} />;
       case 'users':
-        return <UserManager />;
+        return (
+          <UserManager
+            initialOpenForm={quickAction === 'add-user'}
+            actionTrigger={actionTrigger}
+            quickAction={quickAction}
+          />
+        );
       case 'classes':
-        return <ClassManager />;
+        return (
+          <ClassManager
+            initialOpenForm={quickAction === 'add-class'}
+            actionTrigger={actionTrigger}
+            quickAction={quickAction}
+          />
+        );
       case 'subjects':
-        return <SubjectManager />;
+        return (
+          <SubjectManager
+            initialOpenForm={quickAction === 'add-subject'}
+            actionTrigger={actionTrigger}
+            quickAction={quickAction}
+          />
+        );
       case 'sessions':
-        return <SessionManager />;
+        return (
+          <SessionManager
+            initialOpenForm={quickAction === 'set-release' || quickAction === 'add-session'}
+            actionTrigger={actionTrigger}
+            quickAction={quickAction}
+          />
+        );
       case 'results':
         return <ResultManager />;
       case 'carousel':
@@ -180,12 +214,13 @@ const AdminDashboard = () => {
 };
 
 // Overview Section
-const OverviewSection = () => {
+const OverviewSection = ({ onNavigate, onQuickAction }) => {
   const { data: users, loading: loadingUsers } = useFetchData('/users/');
   const { data: classes, loading: loadingClasses } = useFetchData('/classes/');
   const { data: subjects, loading: loadingSubjects } = useFetchData('/subjects/');
   const { data: results, loading: loadingResults } = useFetchData('/results/');
   const { data: sessions, loading: loadingSessions } = useFetchData('/sessions/');
+  const { data: activeLogo } = useFetchData('/media/logo/active_logo/');
 
   // Count users by role - safely handle both array and paginated responses
   const usersList = Array.isArray(users) ? users : (users?.results || []);
@@ -245,14 +280,92 @@ const OverviewSection = () => {
 
   const isLoading = loadingUsers || loadingClasses || loadingSubjects || loadingResults || loadingSessions;
 
+  // Active session and countdown
+  const activeSession = sessionsList.find(s => s.is_active);
+  const [countdown, setCountdown] = useState('');
+
+  useEffect(() => {
+    if (!activeSession?.result_release_date || activeSession?.results_unlocked) {
+      setCountdown('');
+      return;
+    }
+    const target = new Date(activeSession.result_release_date).getTime();
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, target - now);
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdown(`${d}d ${h}h ${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [activeSession?.result_release_date, activeSession?.results_unlocked]);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-          Dashboard Overview
-        </h2>
-        <div className="text-sm text-gray-400">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+    <div className="space-y-8">
+      {/* Hero / Brand */}
+      <div className="relative overflow-hidden rounded-3xl border border-gray-800/60 bg-gradient-to-br from-blue-900/20 via-indigo-900/10 to-purple-900/20">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
+        <div className="relative p-6 sm:p-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gray-900/60 border border-gray-800/70 flex items-center justify-center overflow-hidden">
+            {activeLogo?.image ? (
+              <img src={activeLogo.image} alt="School Logo" className="w-full h-full object-contain p-2" />
+            ) : (
+              <span className="text-3xl">📚</span>
+            )}
+          </div>
+          <div className="flex-1 w-full">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-400">
+                  Admin Command Center
+                </h2>
+                <p className="text-gray-400 mt-1">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={() => onNavigate?.('sessions')}
+                  className="px-4 py-2 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition-all"
+                >
+                  Manage Sessions
+                </button>
+                <button
+                  onClick={() => onNavigate?.('users')}
+                  className="px-4 py-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition-all"
+                >
+                  Manage Users
+                </button>
+              </div>
+            </div>
+            {activeSession && (
+              <div className="mt-4 grid sm:grid-cols-3 gap-3">
+                <div className="bg-gray-900/60 border border-gray-800/70 rounded-2xl p-4">
+                  <p className="text-xs text-gray-400">Active Session</p>
+                  <p className="text-lg font-semibold text-gray-100 truncate">{activeSession.name}</p>
+                </div>
+                <div className="bg-gray-900/60 border border-gray-800/70 rounded-2xl p-4">
+                  <p className="text-xs text-gray-400">Current Term</p>
+                  <p className="text-lg font-semibold text-gray-100 capitalize">{activeSession.current_term}</p>
+                </div>
+                <div className="bg-gray-900/60 border border-gray-800/70 rounded-2xl p-4">
+                  <p className="text-xs text-gray-400">Release Status</p>
+                  {activeSession.results_unlocked ? (
+                    <p className="text-lg font-semibold text-green-400">Unlocked by Admin</p>
+                  ) : activeSession.result_release_date ? (
+                    <p className="text-lg font-semibold text-gray-100">{countdown || 'Pending...'}</p>
+                  ) : (
+                    <p className="text-lg font-semibold text-orange-400">No release date set</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
@@ -293,7 +406,6 @@ const OverviewSection = () => {
                 <span>📅</span> Active Academic Session
               </h3>
               {(() => {
-                const activeSession = sessionsList.find(s => s.is_active);
                 if (activeSession) {
                   return (
                     <div className="space-y-4">
@@ -313,7 +425,7 @@ const OverviewSection = () => {
                           <div className="flex items-start gap-4">
                             <div className="text-4xl">📅</div>
                             <div className="flex-1">
-                              <p className="font-semibold text-blue-400 text-lg mb-2">Result Release Date</p>
+                              <p className="font-semibold text-blue-400 text-lg mb-2">Result Release</p>
                               {activeSession.result_release_date && (
                                 <p className="text-gray-300 text-lg">
                                   {new Date(activeSession.result_release_date).toLocaleString('en-US', {
@@ -327,14 +439,35 @@ const OverviewSection = () => {
                                 </p>
                               )}
                               {activeSession.results_unlocked || (activeSession.result_release_date && new Date() >= new Date(activeSession.result_release_date)) ? (
-                                <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
-                                  <span>✅</span>
-                                  <span className="font-semibold">{activeSession.results_unlocked ? 'Results unlocked by admin' : 'Results are now released!'}</span>
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
+                                    <span>✅</span>
+                                    <span className="font-semibold">{activeSession.results_unlocked ? 'Results unlocked by admin' : 'Results are now released!'}</span>
+                                  </span>
+                                  <button
+                                    onClick={() => onNavigate?.('sessions')}
+                                    className="px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700/60 text-gray-300 hover:bg-gray-800"
+                                  >
+                                    Manage
+                                  </button>
                                 </div>
                               ) : (
-                                <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30">
-                                  <span>🔒</span>
-                                  <span className="font-semibold">Results are locked until release date</span>
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30">
+                                    <span>🔒</span>
+                                    <span className="font-semibold">Results are locked until release date</span>
+                                  </span>
+                                  {countdown && (
+                                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-gray-800/60 border border-gray-700/60 text-gray-300">
+                                      ⏳ {countdown}
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={() => onNavigate?.('sessions')}
+                                    className="px-3 py-2 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-600/30 hover:bg-blue-600/30"
+                                  >
+                                    Set/Unlock
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -349,33 +482,106 @@ const OverviewSection = () => {
                     <div className="text-6xl mb-4">📭</div>
                     <p className="text-gray-400 text-lg">No active session found</p>
                     <p className="text-gray-500 text-sm mt-2">Create an academic session to get started</p>
+                    <div className="mt-4">
+                      <button
+                        onClick={() => onNavigate?.('sessions')}
+                        className="px-4 py-2 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-600/30 hover:bg-blue-600/30"
+                      >
+                        Go to Sessions
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
             </div>
           )}
 
-          {/* Quick Actions */}
-          <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 p-8 rounded-3xl shadow-xl border border-gray-800/50">
-            <h3 className="text-2xl font-semibold mb-6 text-gray-100 flex items-center gap-3">
-              <span>⚡</span> Quick Actions
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Add User', icon: '👤' },
-                { label: 'Add Class', icon: '🏫' },
-                { label: 'Add Subject', icon: '📚' },
-                { label: 'Set Release Date', icon: '📅' }
-              ].map((action, idx) => (
-                <button 
-                  key={idx}
-                  className="group bg-gray-800/50 hover:bg-gray-800 px-6 py-4 rounded-2xl font-medium transition-all border border-gray-700/50 hover:border-gray-600 hover:scale-105"
-                >
-                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">{action.icon}</div>
-                  <div className="text-sm text-gray-300">{action.label}</div>
-                </button>
-              ))}
+          {/* Quick Actions + Recent Activity + Distribution */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Quick Actions */}
+            <div className="lg:col-span-2 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 p-8 rounded-3xl shadow-xl border border-gray-800/50">
+              <h3 className="text-2xl font-semibold mb-6 text-gray-100 flex items-center gap-3">
+                <span>⚡</span> Quick Actions
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Add User', icon: '👤', tab: 'users', action: 'add-user' },
+                  { label: 'Add Class', icon: '🏫', tab: 'classes', action: 'add-class' },
+                  { label: 'Add Subject', icon: '📚', tab: 'subjects', action: 'add-subject' },
+                  { label: 'Set Release Date', icon: '📅', tab: 'sessions', action: 'set-release' }
+                ].map((action, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => onQuickAction ? onQuickAction(action.tab, action.action) : onNavigate?.(action.tab)}
+                    className="group bg-gray-800/50 hover:bg-gray-800 px-6 py-4 rounded-2xl font-medium transition-all border border-gray-700/50 hover:border-gray-600 hover:scale-105"
+                  >
+                    <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">{action.icon}</div>
+                    <div className="text-sm text-gray-300">{action.label}</div>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Recent Activity */}
+            <div className="bg-gray-900/70 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-gray-800/50">
+              <h3 className="text-2xl font-semibold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 flex items-center gap-3">
+                <span>🕒</span> Recent Activity
+              </h3>
+              <div className="space-y-4">
+                {usersList.slice(0, 6).map((u, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-gray-800/40 border border-gray-700/40 rounded-2xl p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                        {u.full_name?.charAt(0) || u.username?.charAt(0) || 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-100 truncate">{u.full_name || u.username}</p>
+                        <p className="text-xs text-gray-400 capitalize truncate">{u.role}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-lg bg-gray-800/60 border border-gray-700/60 text-gray-300">
+                      User
+                    </span>
+                  </div>
+                ))}
+                {usersList.length === 0 && (
+                  <p className="text-gray-400 text-sm">No recent users.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Role Distribution */}
+          <div className="bg-gray-900/70 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-gray-800/50">
+            <h3 className="text-2xl font-semibold mb-6 text-gray-100 flex items-center gap-3">
+              <span>📈</span> User Role Distribution
+            </h3>
+            {(() => {
+              const maxVal = Math.max(studentCount, teacherCount, adminCount, 1);
+              const bars = [
+                { label: 'Pupils', value: studentCount, color: 'bg-blue-500' },
+                { label: 'Teachers', value: teacherCount, color: 'bg-emerald-500' },
+                { label: 'Admins', value: adminCount, color: 'bg-purple-500' },
+              ];
+              return (
+                <div className="space-y-4">
+                  {bars.map((b, i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-gray-300">{b.label}</span>
+                        <span className="text-sm text-gray-400">{b.value}</span>
+                      </div>
+                      <div className="w-full h-3 rounded-full bg-gray-800/70 border border-gray-800/70 overflow-hidden">
+                        <div
+                          className={`h-full ${b.color} rounded-full`}
+                          style={{ width: `${(b.value / maxVal) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </>
       )}

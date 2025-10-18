@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { userAPI, classAPI, studentAPI } from '../api/axios';
 
-const UserManager = () => {
+const UserManager = ({ initialOpenForm = false, actionTrigger }) => {
   const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,27 @@ const UserManager = () => {
     fetchUsers();
     fetchClasses();
   }, []);
+
+  // Open form when quick action triggers
+  useEffect(() => {
+    if (actionTrigger !== undefined) {
+      setShowForm(initialOpenForm);
+      if (initialOpenForm) {
+        setEditingUser(null);
+        setFormData({
+          username: '',
+          password: '',
+          confirm_password: '',
+          full_name: '',
+          role: 'pupil',
+          email: '',
+          phone_number: '',
+          pupil_class: '',
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionTrigger]);
 
   const fetchUsers = async () => {
     try {

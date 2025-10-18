@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { subjectAPI, classAPI } from '../api/axios';
 
-const SubjectManager = () => {
+const SubjectManager = ({ initialOpenForm = false, actionTrigger }) => {
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +18,22 @@ const SubjectManager = () => {
     fetchSubjects();
     fetchClasses();
   }, []);
+
+  useEffect(() => {
+    if (actionTrigger !== undefined) {
+      setShowForm(initialOpenForm);
+      if (initialOpenForm) {
+        setEditingSubject(null);
+        setFormData({
+          name: '',
+          code: '',
+          assigned_class: '',
+          description: '',
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionTrigger]);
 
   const fetchSubjects = async () => {
     try {

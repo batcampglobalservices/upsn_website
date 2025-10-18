@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { sessionAPI } from '../api/axios';
 
-const SessionManager = () => {
+const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction }) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -19,6 +19,25 @@ const SessionManager = () => {
   useEffect(() => {
     fetchSessions();
   }, []);
+
+  useEffect(() => {
+    if (actionTrigger !== undefined) {
+      setShowForm(initialOpenForm);
+      if (initialOpenForm) {
+        setEditingSession(null);
+        setFormData({
+          name: '',
+          start_date: '',
+          end_date: '',
+          is_active: false,
+          result_release_date: quickAction === 'set-release' ? new Date().toISOString().slice(0, 16) : '',
+          current_term: 'first',
+          results_unlocked: false,
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionTrigger]);
 
   const fetchSessions = async () => {
     try {

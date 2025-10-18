@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { classAPI, userAPI, pupilAPI } from '../api/axios';
 
-const ClassManager = () => {
+const ClassManager = ({ initialOpenForm = false, actionTrigger }) => {
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [pupils, setPupils] = useState([]);
@@ -24,6 +24,22 @@ const ClassManager = () => {
     fetchTeachers();
     fetchPupils();
   }, []);
+
+  useEffect(() => {
+    if (actionTrigger !== undefined) {
+      setShowForm(initialOpenForm);
+      if (initialOpenForm) {
+        setEditingClass(null);
+        setFormData({
+          name: '',
+          level: 'JSS1',
+          assigned_teacher: '',
+          description: '',
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionTrigger]);
 
   const fetchClasses = async () => {
     try {
