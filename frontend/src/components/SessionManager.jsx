@@ -406,7 +406,7 @@ const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction })
       )}
 
       {/* Sessions List */}
-      <div className="bg-gray-900/70 dark:bg-gray-900/70 rounded-3xl shadow-lg border border-gray-800 dark:border-gray-800 overflow-hidden">
+  <div className="bg-gray-900/70 dark:bg-gray-900/70 rounded-xl shadow-lg border border-gray-800 dark:border-gray-800 overflow-hidden mx-auto max-w-2xl w-full mt-4 transition-all duration-300">
         {sessions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400 dark:text-gray-400 text-lg">No academic sessions found</p>
