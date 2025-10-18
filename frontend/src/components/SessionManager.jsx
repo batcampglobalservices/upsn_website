@@ -508,11 +508,11 @@ const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction })
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex flex-wrap gap-2 justify-end">
                       <button
                         onClick={() => handleEdit(session)}
                         disabled={deleting === session.id}
-                        className="text-blue-400 hover:text-blue-300 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 transition-colors"
+                        className="text-blue-400 hover:text-blue-300 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Edit
                       </button>
@@ -532,7 +532,7 @@ const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction })
                           }
                         }}
                         disabled={deleting === session.id}
-                        className="text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 transition-colors"
+                        className="text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         title={session.results_unlocked ? 'Lock results' : 'Unlock results now'}
                       >
                         {session.results_unlocked ? 'Lock Results' : 'Unlock Now'}
@@ -554,6 +554,40 @@ const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction })
                           'Delete'
                         )}
                       </button>
+                      <button
+                        onClick={() => setDetailsModal(session)}
+                        className="text-purple-400 hover:text-purple-300 dark:text-purple-400 dark:hover:text-purple-300 transition-colors border border-purple-500/30 rounded-2xl px-3 py-1 text-xs font-semibold"
+                      >
+                        More Details
+                      </button>
+  // Modal state for details
+  const [detailsModal, setDetailsModal] = useState(null);
+      {/* Details Modal */}
+      {detailsModal && (
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/60 flex items-center justify-center z-50 p-2">
+          <div className="bg-gray-900/95 dark:bg-gray-900/95 rounded-xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto border border-gray-800 dark:border-gray-800 transition-all duration-300 p-6">
+            <h3 className="text-xl font-bold mb-4 text-gray-100 dark:text-gray-100">Session Details</h3>
+            <div className="space-y-3">
+              <div><span className="font-semibold text-gray-300">Name:</span> <span className="text-gray-100">{detailsModal.name}</span></div>
+              <div><span className="font-semibold text-gray-300">Start Date:</span> <span className="text-gray-100">{new Date(detailsModal.start_date).toLocaleDateString()}</span></div>
+              <div><span className="font-semibold text-gray-300">End Date:</span> <span className="text-gray-100">{new Date(detailsModal.end_date).toLocaleDateString()}</span></div>
+              <div><span className="font-semibold text-gray-300">Current Term:</span> <span className="text-gray-100">{detailsModal.current_term}</span></div>
+              <div><span className="font-semibold text-gray-300">Result Release Date:</span> <span className="text-gray-100">{detailsModal.result_release_date ? new Date(detailsModal.result_release_date).toLocaleString() : 'Not set'}</span></div>
+              <div><span className="font-semibold text-gray-300">Is Active:</span> <span className="text-gray-100">{detailsModal.is_active ? 'Yes' : 'No'}</span></div>
+              <div><span className="font-semibold text-gray-300">Results Unlocked:</span> <span className="text-gray-100">{detailsModal.results_unlocked ? 'Yes' : 'No'}</span></div>
+              {/* Unlock/Lock Results button removed from modal for clarity */}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setDetailsModal(null)}
+                className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-6 py-2 rounded-2xl font-semibold border border-purple-500/30"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
                     </td>
                   </tr>
                 ))}
