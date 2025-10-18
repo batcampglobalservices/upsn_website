@@ -94,40 +94,57 @@ const ScoreEntry = () => {
     try {
       console.log('Fetching results with params:', {
         session: selectedSession,
-        student__student_profile__student_class: selectedClass,
+        pupil__pupil_profile__pupil_class: selectedClass,
         subject: selectedSubject,
         term: selectedTerm,
       });
       const response = await resultAPI.getResults({
         session: selectedSession,
-        student__student_profile__student_class: selectedClass,
+        pupil__pupil_profile__pupil_class: selectedClass,
         subject: selectedSubject,
         term: selectedTerm,
       });
       console.log('Results response:', response.data);
       const existingResults = response.data.results || response.data;
       
-      // Create a map of existing results by student ID
+      // Create a map of existing results by pupil ID
       const resultsMap = {};
       existingResults.forEach(result => {
-        resultsMap[result.student] = result;
+        resultsMap[result.pupil] = result;  // Backend uses 'pupil' not 'student'
       });
 
-      // Initialize results for all students
-      const initialResults = students.map(student => {
-        const existing = resultsMap[student.id];
-        return {
-          id: existing?.id || null,
-          student: student.id,
-          student_name: student.user?.full_name || 'Unknown',
-          admission_number: student.admission_number || 'N/A',
-          test_score: existing?.test_score || '',
-          exam_score: existing?.exam_score || '',
-          total: existing?.total || 0,
-          grade: existing?.grade || '',
-          comment: existing?.comment || '',
-        };
-      });
+      // Initialize results for all students (pupils)
+      // Filter out pupils without valid user accounts
+      const skippedPupils = [];
+      const initialResults = students
+        .filter(student => {
+          if (!student.user || !student.user.id) {
+            console.warn(`⚠️ Skipping pupil without valid user account:`, student);
+            skippedPupils.push(student.admission_number || 'Unknown');
+            return false;
+          }
+          return true;
+        })
+        .map(student => {
+          // Backend Result.pupil expects CustomUser ID, not PupilProfile ID
+          const existing = resultsMap[student.user.id];
+          return {
+            id: existing?.id || null,
+            student: student.user.id,  // CRITICAL: Must be User ID, not PupilProfile ID!
+            student_name: student.user.full_name || 'Unknown',
+            admission_number: student.admission_number || 'N/A',
+            test_score: existing?.test_score || '',
+            exam_score: existing?.exam_score || '',
+            total: existing?.total || 0,
+            grade: existing?.grade || '',
+            comment: existing?.teacher_comment || '',  // Backend uses 'teacher_comment'
+          };
+        });
+
+      // Notify user if some pupils were skipped
+      if (skippedPupils.length > 0) {
+        alert(`⚠️ Warning: ${skippedPupils.length} pupil(s) were skipped because they don't have user accounts yet.\n\nAdmission numbers: ${skippedPupils.join(', ')}\n\nPlease contact admin to create user accounts for these pupils.`);
+      }
 
       console.log('Initialized results:', initialResults);
       setResults(initialResults);
@@ -182,8 +199,15 @@ const ScoreEntry = () => {
       const savePromises = results.map(async (result) => {
         // Only save if there are scores entered
         if (result.test_score || result.exam_score) {
+          // Validate we have a valid pupil ID (User ID, not PupilProfile ID)
+          if (!result.student) {
+            console.error(`❌ Missing pupil ID for ${result.student_name}`);
+            errorCount++;
+            return;
+          }
+
           const data = {
-            student: result.student,
+            pupil: result.student,  // Backend expects 'pupil' field with User ID
             session: selectedSession,
             subject: selectedSubject,
             term: selectedTerm,
@@ -192,22 +216,26 @@ const ScoreEntry = () => {
             teacher_comment: result.comment || '',
           };
 
-          console.log('Saving data for student:', result.student_name, data);
+          console.log('💾 Saving data for pupil:', result.student_name, data);
 
           try {
             if (result.id) {
               // Update existing result
-              console.log('Updating result ID:', result.id);
+              console.log('📝 Updating result ID:', result.id);
               await resultAPI.updateResult(result.id, data);
+              console.log('✅ Result updated successfully');
             } else {
               // Create new result
-              console.log('Creating new result');
-              await resultAPI.createResult(data);
+              console.log('➕ Creating new result');
+              const response = await resultAPI.createResult(data);
+              console.log('✅ Result created successfully:', response.data);
             }
             savedCount++;
           } catch (err) {
-            console.error(`Error saving result for student ${result.student_name}:`, err);
-            console.error('Error details:', err.response?.data);
+            console.error(`❌ Error saving result for pupil ${result.student_name}:`, err);
+            console.error('Error response:', err.response?.data);
+            console.error('📋 DETAILED ERROR:', JSON.stringify(err.response?.data, null, 2));
+            console.error('📋 Request data that failed:', JSON.stringify(data, null, 2));
             errorCount++;
             throw err;
           }
@@ -216,11 +244,21 @@ const ScoreEntry = () => {
 
       await Promise.all(savePromises.filter(Boolean));
       
-      alert(`✅ Successfully saved ${savedCount} score(s)!\n\nResults are now visible to students and summaries have been generated.`);
-      fetchResults(); // Refresh to get updated data with grades
+      console.log(`✅ Save complete: ${savedCount} saved, ${errorCount} errors`);
+      
+      // Immediately refresh the results to show updated data
+      await fetchResults();
+      
+      alert(`✅ Successfully saved ${savedCount} score(s)!\n\nResults are now visible to pupils and summaries have been generated.`);
     } catch (error) {
-      console.error('Error saving scores:', error);
-      if (errorCount > 0) {
+      console.error('❌ Error saving scores:', error);
+      
+      // Show detailed error information
+      if (error.response?.data) {
+        const errorData = JSON.stringify(error.response.data, null, 2);
+        console.error('🚨 BACKEND ERROR DETAILS:', errorData);
+        alert(`❌ Failed to save scores!\n\nBackend Error:\n${errorData}\n\nCheck console for full details.`);
+      } else if (errorCount > 0) {
         alert(`⚠️ Saved ${savedCount} score(s), but ${errorCount} failed.\n\nPlease check the console for details and try again.`);
       } else {
         alert('❌ Failed to save scores. Please check your internet connection and try again.');

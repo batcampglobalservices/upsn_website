@@ -7,15 +7,18 @@ const UserManager = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterClass, setFilterClass] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     confirm_password: '',
     full_name: '',
-    role: 'student',
+    role: 'pupil',
     email: '',
     phone_number: '',
-    student_class: '',
+    pupil_class: '',
   });
 
   useEffect(() => {
@@ -77,37 +80,44 @@ const UserManager = () => {
         await userAPI.updateUser(editingUser.id, updateData);
         console.log('✅ User updated');
         
-        // Update student profile class if current role is student
-        if (formData.role === 'student') {
-          console.log('Updating student class assignment...');
-          console.log('Selected class ID:', formData.student_class);
+        // Immediately refresh user list
+        await fetchUsers();
+        
+        // Update pupil profile class if current role is pupil
+        if (formData.role === 'pupil') {
+          console.log('Updating pupil class assignment...');
+          console.log('Selected class ID:', formData.pupil_class);
           
-          // Try to get or create student profile
+          // Try to get or create pupil profile
           try {
             const profilesResponse = await studentAPI.getProfiles({ user: editingUser.id });
             const profiles = profilesResponse.data.results || profilesResponse.data;
-            console.log('Student profiles found:', profiles);
+            console.log('Pupil profiles found:', profiles);
             
             if (profiles && profiles.length > 0) {
               const profileId = profiles[0].id;
-              const classValue = formData.student_class ? parseInt(formData.student_class) : null;
+              const classValue = formData.pupil_class ? parseInt(formData.pupil_class) : null;
               console.log('Updating profile ID:', profileId, 'with class:', classValue);
               
               // Update existing profile
               await studentAPI.updateProfile(profileId, {
-                student_class: classValue,
+                pupil_class: classValue,
               });
               console.log('✅ Profile class updated successfully!');
             } else {
-              console.warn('⚠️ No student profile found for user');
-              alert('User updated but student profile not found. Contact administrator.');
+              console.warn('⚠️ No pupil profile found for user');
+              alert('User updated but pupil profile not found. Contact administrator.');
             }
           } catch (profileError) {
-            console.error('❌ Error updating student profile:', profileError);
+            console.error('❌ Error updating pupil profile:', profileError);
             console.error('Profile error response:', profileError.response?.data);
             alert('User updated, but failed to update class assignment. Please try again or contact administrator.');
           }
         }
+        
+        // Refresh data again after profile update
+        await fetchUsers();
+        await fetchClasses();
         
         alert('User updated successfully!');
       } else {
@@ -117,74 +127,76 @@ const UserManager = () => {
           return;
         }
         
+        // Validate that pupils must have a class
+        if (formData.role === 'pupil' && !formData.pupil_class) {
+          alert('Class assignment is required for pupils');
+          return;
+        }
+        
         console.log('=== CREATING NEW USER ===');
         const userData = {
           username: formData.username,
           password: formData.password,
           full_name: formData.full_name,
           role: formData.role,
-          email: formData.email,
-          phone_number: formData.phone_number,
+          email: formData.email || '',
+          phone_number: formData.phone_number || '',
         };
-        console.log('User data:', userData);
         
-        const userResponse = await userAPI.createUser(userData);
-        console.log('User created:', userResponse.data);
-        
-        // If creating a student, update the student profile with class
-        if (formData.role === 'student') {
-          console.log('User is a student, checking for class assignment...');
-          console.log('Selected class ID:', formData.student_class);
-          
-          if (formData.student_class) {
-            // Wait a moment for the profile to be created
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            try {
-              // Get the student profile that was auto-created
-              console.log('Fetching student profiles for user:', userResponse.data.id);
-              const profilesResponse = await studentAPI.getProfiles({ user: userResponse.data.id });
-              const profiles = profilesResponse.data.results || profilesResponse.data;
-              console.log('Student profiles found:', profiles);
-              
-              if (profiles && profiles.length > 0) {
-                const profileId = profiles[0].id;
-                console.log('Updating profile ID:', profileId, 'with class:', formData.student_class);
-                
-                await studentAPI.updateProfile(profileId, {
-                  student_class: parseInt(formData.student_class),
-                });
-                console.log('✅ Profile updated with class successfully!');
-              } else {
-                console.warn('⚠️ No student profile found for user');
-                alert('User created but could not assign class. Please edit the user to assign a class.');
-              }
-            } catch (profileError) {
-              console.error('❌ Error updating student profile:', profileError);
-              console.error('Profile error details:', profileError.response?.data);
-              alert('User created successfully, but failed to assign class. You can edit the user to assign a class.');
-            }
-          } else {
-            console.log('No class selected for this student');
-          }
+        // Include pupil_class in the initial user creation for pupils
+        if (formData.role === 'pupil' && formData.pupil_class) {
+          userData.pupil_class = parseInt(formData.pupil_class);
         }
         
-        alert('User created successfully!');
+        console.log('User data being sent:', userData);
+        
+        try {
+          const userResponse = await userAPI.createUser(userData);
+          console.log('✅ User created successfully:', userResponse.data);
+          alert('User created successfully!');
+          
+          // Immediately refresh all data
+          await fetchUsers();
+          await fetchClasses();
+          
+          // Reset form and refresh list
+          setShowForm(false);
+          setEditingUser(null);
+          setFormData({
+            username: '',
+            password: '',
+            confirm_password: '',
+            full_name: '',
+            role: 'pupil',
+            email: '',
+            phone_number: '',
+            pupil_class: '',
+          });
+          // No need to call fetchUsers again, already called above
+        } catch (createError) {
+          console.error('❌ Error creating user:', createError);
+          console.error('Error response:', createError.response?.data);
+          
+          // Show specific error message
+          const errorData = createError.response?.data;
+          let errorMessage = 'Failed to create user.\n\n';
+          
+          if (errorData) {
+            if (typeof errorData === 'object') {
+              // Handle field-specific errors
+              Object.keys(errorData).forEach(key => {
+                const messages = Array.isArray(errorData[key]) ? errorData[key] : [errorData[key]];
+                errorMessage += `${key}: ${messages.join(', ')}\n`;
+              });
+            } else if (typeof errorData === 'string') {
+              errorMessage += errorData;
+            }
+          }
+          
+          alert(errorMessage);
+          return; // Stop execution on error
+        }
       }
-      
-      setShowForm(false);
-      setEditingUser(null);
-      setFormData({
-        username: '',
-        password: '',
-        confirm_password: '',
-        full_name: '',
-        role: 'student',
-        email: '',
-        phone_number: '',
-        student_class: '',
-      });
-      fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
       console.error('Error response:', error.response?.data);
@@ -205,7 +217,7 @@ const UserManager = () => {
       role: user.role,
       email: user.email || '',
       phone_number: user.phone_number || '',
-      student_class: user.student_profile?.student_class || '',
+      pupil_class: user.pupil_profile?.pupil_class || '',
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -219,10 +231,10 @@ const UserManager = () => {
       password: '',
       confirm_password: '',
       full_name: '',
-      role: 'student',
+      role: 'pupil',
       email: '',
       phone_number: '',
-      student_class: '',
+      pupil_class: '',
     });
   };
 
@@ -243,6 +255,52 @@ const UserManager = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error activating user:', error);
+      alert('Failed to activate user. Please try again.');
+    }
+  };
+
+  const handleDelete = async (user) => {
+    // Confirmation with user details
+    const confirmMessage = `⚠️ DELETE USER PERMANENTLY?\n\n` +
+      `Username: ${user.username}\n` +
+      `Name: ${user.full_name}\n` +
+      `Role: ${user.role}\n\n` +
+      `This action CANNOT be undone!\n` +
+      `All associated data (results, profiles) will be deleted.\n\n` +
+      `Type "DELETE" to confirm:`;
+    
+    const userInput = prompt(confirmMessage);
+    
+    if (userInput !== 'DELETE') {
+      if (userInput !== null) {
+        alert('Deletion cancelled. You must type "DELETE" exactly to confirm.');
+      }
+      return;
+    }
+
+    console.log('🗑️ Deleting user:', user.username);
+    
+    try {
+      await userAPI.deleteUser(user.id);
+      console.log('✅ User deleted successfully');
+      alert(`User "${user.full_name}" has been permanently deleted.`);
+      
+      // Immediately refresh the user list
+      await fetchUsers();
+      
+      // Also refresh classes if it was a teacher
+      if (user.role === 'teacher') {
+        await fetchClasses();
+      }
+    } catch (error) {
+      console.error('❌ Error deleting user:', error);
+      console.error('Error response:', error.response?.data);
+      
+      const errorMsg = error.response?.data?.detail || 
+                       error.response?.data?.error ||
+                       JSON.stringify(error.response?.data) || 
+                       'An error occurred';
+      alert(`Failed to delete user.\n\nError: ${errorMsg}\n\nThe user may have associated data that prevents deletion.`);
     }
   };
 
@@ -307,23 +365,25 @@ const UserManager = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-gray-100 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
-                  <option value="student">Student</option>
+                  <option value="pupil">Pupil</option>
                   <option value="teacher">Teacher</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              {formData.role === 'student' && (
+              {formData.role === 'pupil' && (
                 <div>
                   <label className="block text-gray-300 dark:text-gray-300 mb-2 font-medium">
-                    Class Assignment {!editingUser && '(Optional)'}
+                    Class Assignment {editingUser && '(Optional)'}
+                    {!editingUser && <span className="text-red-400"> *</span>}
                   </label>
                   <select
-                    name="student_class"
-                    value={formData.student_class}
+                    name="pupil_class"
+                    value={formData.pupil_class}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-gray-100 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    required={!editingUser}
                   >
-                    <option value="">No Class Assigned</option>
+                    <option value="">{!editingUser ? 'Select a Class (Required)' : 'Select a Class'}</option>
                     {classes.map((classItem) => (
                       <option key={classItem.id} value={classItem.id}>
                         {classItem.name}
@@ -331,7 +391,11 @@ const UserManager = () => {
                     ))}
                   </select>
                   <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
-                    Assign student to a class so teachers can see them
+                    {!editingUser ? (
+                      <span className="text-yellow-400 font-semibold">⚠️ Class assignment is required for new pupils</span>
+                    ) : (
+                      'Update class assignment if needed'
+                    )}
                   </p>
                 </div>
               )}
@@ -392,6 +456,64 @@ const UserManager = () => {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="bg-gray-900/70 dark:bg-gray-900/70 p-6 rounded-3xl shadow-lg shadow-blue-500/5 border border-gray-800 dark:border-gray-800 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-gray-300 dark:text-gray-300 mb-2 font-medium text-sm">Search</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name or username..."
+              className="w-full px-4 py-2 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-gray-100 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-300 dark:text-gray-300 mb-2 font-medium text-sm">Filter by Role</label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-gray-100 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+              <option value="all">All Roles</option>
+              <option value="pupil">Pupils</option>
+              <option value="teacher">Teachers</option>
+              <option value="admin">Admins</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-gray-300 dark:text-gray-300 mb-2 font-medium text-sm">Filter by Class</label>
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 rounded-xl text-gray-100 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+              <option value="all">All Classes</option>
+              <option value="unassigned">Unassigned</option>
+              {classes.map((classItem) => (
+                <option key={classItem.id} value={classItem.id}>
+                  {classItem.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-gray-300 dark:text-gray-300 mb-2 font-medium text-sm">&nbsp;</label>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterRole('all');
+                setFilterClass('all');
+              }}
+              className="w-full px-4 py-2 bg-gray-700 dark:bg-gray-700 text-gray-100 dark:text-gray-100 rounded-xl hover:bg-gray-600 dark:hover:bg-gray-600 transition-all"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-gray-900/70 dark:bg-gray-900/70 rounded-3xl shadow-lg shadow-blue-500/5 border border-gray-800 dark:border-gray-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full">
@@ -419,9 +541,34 @@ const UserManager = () => {
                   <td colSpan="7" className="px-6 py-8 text-center text-gray-400 dark:text-gray-400">No users found</td>
                 </tr>
               ) : (
-                users.map((user) => {
-                  const className = user.student_profile?.student_class_name || 
-                                   classes.find(c => c.id === user.student_profile?.student_class)?.name || 
+                users
+                  .filter(user => {
+                    // Filter by role
+                    if (filterRole !== 'all' && user.role !== filterRole) return false;
+                    
+                    // Filter by class
+                    if (filterClass !== 'all') {
+                      if (filterClass === 'unassigned') {
+                        if (user.pupil_profile?.pupil_class) return false;
+                      } else {
+                        if (user.pupil_profile?.pupil_class !== parseInt(filterClass)) return false;
+                      }
+                    }
+                    
+                    // Filter by search term
+                    if (searchTerm) {
+                      const search = searchTerm.toLowerCase();
+                      return (
+                        user.full_name.toLowerCase().includes(search) ||
+                        user.username.toLowerCase().includes(search)
+                      );
+                    }
+                    
+                    return true;
+                  })
+                  .map((user) => {
+                  const className = user.pupil_profile?.pupil_class_name || 
+                                   classes.find(c => c.id === user.pupil_profile?.pupil_class)?.name || 
                                    'N/A';
                   return (
                     <tr key={user.id} className="hover:bg-gray-800/30 dark:hover:bg-gray-800/30 transition-colors">
@@ -437,7 +584,7 @@ const UserManager = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {user.role === 'student' ? (
+                        {user.role === 'pupil' ? (
                           <span className={`text-sm font-medium ${className !== 'N/A' ? 'text-blue-400 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}>
                             {className}
                           </span>
@@ -454,7 +601,7 @@ const UserManager = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => handleEdit(user)}
                             className="text-blue-400 dark:text-blue-400 hover:text-blue-300 dark:hover:text-blue-300 text-sm font-semibold transition-colors"
@@ -464,7 +611,7 @@ const UserManager = () => {
                           {user.is_active ? (
                             <button
                               onClick={() => handleDeactivate(user.id)}
-                              className="text-red-400 dark:text-red-400 hover:text-red-300 dark:hover:text-red-300 text-sm font-semibold transition-colors"
+                              className="text-orange-400 dark:text-orange-400 hover:text-orange-300 dark:hover:text-orange-300 text-sm font-semibold transition-colors"
                             >
                               Deactivate
                             </button>
@@ -476,6 +623,13 @@ const UserManager = () => {
                               Activate
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDelete(user)}
+                            className="text-red-500 dark:text-red-500 hover:text-red-400 dark:hover:text-red-400 text-sm font-bold transition-colors"
+                            title="Permanently delete this user"
+                          >
+                            🗑️ Delete
+                          </button>
                         </div>
                       </td>
                     </tr>

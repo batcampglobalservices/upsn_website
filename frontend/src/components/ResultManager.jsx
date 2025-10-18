@@ -63,7 +63,7 @@ const ResultManager = () => {
       const params = {};
       if (selectedSession) params.session = selectedSession;
       if (selectedTerm) params.term = selectedTerm;
-      if (selectedClass) params.student__student_profile__student_class = selectedClass;
+      if (selectedClass) params.pupil__pupil_profile__pupil_class = selectedClass;
       if (selectedSubject) params.subject = selectedSubject;
 
       const response = await resultAPI.getResults(params);

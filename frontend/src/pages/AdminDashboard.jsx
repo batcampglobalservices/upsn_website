@@ -189,7 +189,7 @@ const OverviewSection = () => {
 
   // Count users by role - safely handle both array and paginated responses
   const usersList = Array.isArray(users) ? users : (users?.results || []);
-  const studentCount = usersList.filter(u => u.role === 'student').length;
+  const studentCount = usersList.filter(u => u.role === 'pupil').length;
   const teacherCount = usersList.filter(u => u.role === 'teacher').length;
   const adminCount = usersList.filter(u => u.role === 'admin').length;
 
@@ -200,7 +200,7 @@ const OverviewSection = () => {
 
   const stats = [
     { 
-      label: 'Total Students', 
+      label: 'Total Pupils', 
       value: studentCount, 
       color: 'from-blue-500 to-cyan-500',
       icon: '👨‍🎓',
