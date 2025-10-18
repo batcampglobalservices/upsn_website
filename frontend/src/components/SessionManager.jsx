@@ -267,9 +267,9 @@ const SessionManager = ({ initialOpenForm = false, actionTrigger, quickAction })
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900/95 dark:bg-gray-900/95 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-800 dark:border-gray-800">
-            <div className="p-8">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/50 flex items-center justify-center z-50 p-2">
+          <div className="bg-gray-900/95 dark:bg-gray-900/95 rounded-xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto border border-gray-800 dark:border-gray-800 transition-all duration-300">
+            <div className="p-4 sm:p-6">
               <h3 className="text-2xl font-bold mb-6 text-gray-100 dark:text-gray-100">
                 {editingSession ? 'Edit Academic Session' : 'Create New Academic Session'}
               </h3>
