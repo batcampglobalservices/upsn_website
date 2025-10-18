@@ -81,6 +81,26 @@ class PupilProfileViewSet(viewsets.ModelViewSet):
             return base_queryset.filter(user=user)
         return PupilProfile.objects.none()
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
+    def set_class(self, request, pk=None):
+        """Allow admin to set or clear the pupil's class"""
+        profile = self.get_object()
+        pupil_class_id = request.data.get('pupil_class')
+
+        # Allow clearing the class by sending empty string or null
+        if pupil_class_id in ['', None]:
+            profile.pupil_class = None
+            profile.save()
+            return Response({'message': 'Pupil class cleared successfully'}, status=status.HTTP_200_OK)
+
+        try:
+            # Accept numeric id
+            profile.pupil_class_id = int(pupil_class_id)
+            profile.save()
+            return Response({'message': 'Pupil class updated successfully'}, status=status.HTTP_200_OK)
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid pupil_class id'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -170,4 +190,40 @@ def update_profile_view(request):
         'message': 'Profile updated successfully',
         'user': UserProfileSerializer(request.user).data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdmin])
+def set_pupil_class_view(request):
+    """Admin endpoint to set or clear a pupil's class by pupil_profile id or user id.
+
+    Accepts JSON payload: { "profile_id": <id>, "pupil_class": <class_id> }
+    If `pupil_class` is null or empty, the class will be cleared.
+    """
+    profile_id = request.data.get('profile_id')
+    user_id = request.data.get('user_id')
+    pupil_class_id = request.data.get('pupil_class')
+
+    if not profile_id and not user_id:
+        return Response({'error': 'profile_id or user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        if profile_id:
+            profile = PupilProfile.objects.get(id=profile_id)
+        else:
+            profile = PupilProfile.objects.get(user_id=user_id)
+    except PupilProfile.DoesNotExist:
+        return Response({'error': 'PupilProfile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if pupil_class_id in ['', None]:
+        profile.pupil_class = None
+        profile.save()
+        return Response({'message': 'Pupil class cleared successfully'}, status=status.HTTP_200_OK)
+
+    try:
+        profile.pupil_class_id = int(pupil_class_id)
+        profile.save()
+        return Response({'message': 'Pupil class updated successfully'}, status=status.HTTP_200_OK)
+    except (TypeError, ValueError):
+        return Response({'error': 'Invalid pupil_class id'}, status=status.HTTP_400_BAD_REQUEST)
 

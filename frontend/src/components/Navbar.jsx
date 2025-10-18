@@ -118,6 +118,12 @@ const Navbar = () => {
               {item}
             </a>
           ))}
+           <Link
+                to="/login"
+                className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-500 dark:hover:bg-blue-500 transition shadow-lg hover:shadow-blue-500/50"
+              >
+                Portal
+              </Link>
         </div>
       </div>
     </nav>

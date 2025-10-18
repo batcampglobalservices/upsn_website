@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 """
 Quick script to create an admin user
+Can be run interactively or with command-line arguments for Railway
 """
 import os
 import sys
 import django
 
 # Setup Django environment
-sys.path.append('/home/batombari/Documents/Full stack dev/backend')
+# Get the directory where this script is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
@@ -18,22 +21,41 @@ def create_admin():
     print("CREATE ADMIN USER")
     print("=" * 60)
     
-    # Admin credentials
-    username = input("Enter username (numeric only, e.g., 12345): ").strip()
+    # Check for environment variables first (for Railway)
+    username = os.environ.get('ADMIN_USERNAME')
+    password = os.environ.get('ADMIN_PASSWORD')
+    full_name = os.environ.get('ADMIN_FULLNAME', 'System Administrator')
+    email = os.environ.get('ADMIN_EMAIL')
+    phone = os.environ.get('ADMIN_PHONE')
     
-    if not username.isdigit():
-        print("❌ Error: Username must be numeric!")
-        return
-    
-    # Check if user already exists
-    if CustomUser.objects.filter(username=username).exists():
-        print(f"❌ Error: User with username {username} already exists!")
-        return
-    
-    full_name = input("Enter full name: ").strip()
-    email = input("Enter email (optional, press Enter to skip): ").strip() or None
-    phone = input("Enter phone number (optional, press Enter to skip): ").strip() or None
-    password = input("Enter password: ").strip()
+    # If no environment variables, use interactive mode
+    if not username or not password:
+        print("Interactive mode (use environment variables on Railway)")
+        username = input("Enter username (numeric only, e.g., 12345): ").strip()
+        
+        if not username.isdigit():
+            print("❌ Error: Username must be numeric!")
+            return
+        
+        # Check if user already exists
+        if CustomUser.objects.filter(username=username).exists():
+            print(f"❌ Error: User with username {username} already exists!")
+            return
+        
+        full_name = input("Enter full name: ").strip()
+        email = input("Enter email (optional, press Enter to skip): ").strip() or None
+        phone = input("Enter phone number (optional, press Enter to skip): ").strip() or None
+        password = input("Enter password: ").strip()
+    else:
+        # Non-interactive mode (for Railway)
+        if not username.isdigit():
+            print("❌ Error: ADMIN_USERNAME must be numeric!")
+            return
+        
+        # Check if user already exists
+        if CustomUser.objects.filter(username=username).exists():
+            print(f"❌ User with username {username} already exists!")
+            return
     
     try:
         # Create admin user

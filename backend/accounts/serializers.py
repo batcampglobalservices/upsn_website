@@ -110,7 +110,38 @@ class UserSerializer(serializers.ModelSerializer):
         if 'phone_number' in validated_data and not validated_data['phone_number']:
             validated_data['phone_number'] = None
         
-        # Update all other fields
+        # Extract pupil_class if provided (admins may set this)
+        pupil_class = None
+        # If request included pupil_class in payload (not part of validated_data because it's on profile),
+        # it may be available on self.context['request'].data
+        request = self.context.get('request')
+        if request and getattr(request.user, 'role', None) == 'admin':
+            try:
+                # Support DRF Request (.data) or Django HttpRequest (.POST/.body)
+                request_data = None
+                if hasattr(request, 'data'):
+                    request_data = request.data
+                elif hasattr(request, 'POST'):
+                    request_data = request.POST
+                else:
+                    # Try parsing JSON body
+                    try:
+                        import json
+                        if hasattr(request, 'body') and request.body:
+                            request_data = json.loads(request.body.decode('utf-8'))
+                    except Exception:
+                        request_data = None
+
+                # Accept either 'pupil_class' at root or inside 'pupil_profile'
+                if isinstance(request_data, dict):
+                    if 'pupil_class' in request_data:
+                        pupil_class = request_data.get('pupil_class')
+                    elif 'pupil_profile' in request_data and isinstance(request_data['pupil_profile'], dict):
+                        pupil_class = request_data['pupil_profile'].get('pupil_class')
+            except Exception:
+                pupil_class = None
+
+        # Update all other fields on the user instance
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
@@ -122,7 +153,18 @@ class UserSerializer(serializers.ModelSerializer):
         
         # Auto-create PupilProfile if role changed to pupil and profile doesn't exist
         if instance.role == 'pupil':
-            PupilProfile.objects.get_or_create(user=instance)
+            profile, _ = PupilProfile.objects.get_or_create(user=instance)
+            # If admin provided a pupil_class, set it on the profile
+            if pupil_class is not None:
+                try:
+                    # Accept integer ID or string that can be cast to int
+                    profile.pupil_class_id = int(pupil_class) if pupil_class != '' else None
+                except Exception:
+                    profile.pupil_class = profile.pupil_class
+                profile.save()
+        else:
+            # If role is not pupil but an admin provided a pupil_class, ignore it
+            pass
         
         return instance
 
@@ -153,6 +195,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
     Serializer for creating new users (Admin only)
     """
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    # Accept class id on create for pupils (write-only). Support legacy 'student_class' key too.
+    pupil_class = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    student_class = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = CustomUser
@@ -166,6 +211,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
         }
     
     def create(self, validated_data):
+        # Extract optional class values (may be provided as legacy student_class or pupil_class)
+        pupil_class = validated_data.pop('pupil_class', None)
+        student_class = validated_data.pop('student_class', None)
+        # prefer pupil_class if set, else student_class
+        class_id = pupil_class if pupil_class is not None else student_class
+
         password = validated_data.pop('password')
         
         # Handle empty email - convert to None
@@ -182,7 +233,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
         
         # Auto-create PupilProfile if role is pupil
         if user.role == 'pupil':
-            PupilProfile.objects.create(user=user)
+            profile = PupilProfile.objects.create(user=user)
+            # set class if provided
+            if class_id not in [None, '']:
+                try:
+                    profile.pupil_class_id = int(class_id)
+                    profile.save()
+                except Exception:
+                    # ignore invalid class id; profile created without class
+                    pass
         
         return user
 
