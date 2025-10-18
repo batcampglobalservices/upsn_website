@@ -13,6 +13,7 @@ const SessionManager = () => {
     is_active: false,
     result_release_date: '',
     current_term: 'first',
+    results_unlocked: false,
   });
 
   useEffect(() => {
@@ -76,6 +77,7 @@ const SessionManager = () => {
         is_active: false,
         result_release_date: '',
         current_term: 'first',
+        results_unlocked: false,
       });
       // Optionally re-fetch in background for consistency
       fetchSessions();
@@ -101,6 +103,7 @@ const SessionManager = () => {
       result_release_date: session.result_release_date ? 
         new Date(session.result_release_date).toISOString().slice(0, 16) : '',
       current_term: session.current_term || 'first',
+      results_unlocked: !!session.results_unlocked,
     });
     setShowForm(true);
   };
@@ -140,6 +143,7 @@ const SessionManager = () => {
       is_active: false,
       result_release_date: '',
       current_term: 'first',
+      results_unlocked: false,
     });
   };
 
@@ -398,14 +402,19 @@ const SessionManager = () => {
                       {session.result_release_date ? (
                         <div>
                           <div>{new Date(session.result_release_date).toLocaleString()}</div>
-                          {new Date() >= new Date(session.result_release_date) ? (
+                          {session.results_unlocked || new Date() >= new Date(session.result_release_date) ? (
                             <span className="text-green-400 dark:text-green-400 text-xs">Released</span>
                           ) : (
                             <span className="text-orange-400 dark:text-orange-400 text-xs">Locked</span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-500 dark:text-gray-500">Not set</span>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-500">Not set</span>
+                          {session.results_unlocked && (
+                            <span className="ml-2 text-green-400 text-xs">(Unlocked)</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -415,6 +424,27 @@ const SessionManager = () => {
                         className="text-blue-400 hover:text-blue-300 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 transition-colors"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            if (session.results_unlocked) {
+                              const res = await sessionAPI.lockResults(session.id);
+                              setSessions(prev => prev.map(s => s.id === session.id ? { ...s, ...res.data.session } : s));
+                            } else {
+                              const res = await sessionAPI.unlockResults(session.id);
+                              setSessions(prev => prev.map(s => s.id === session.id ? { ...s, ...res.data.session } : s));
+                            }
+                          } catch (e) {
+                            console.error('Toggle unlock failed', e);
+                            alert('Failed to toggle results lock.');
+                          }
+                        }}
+                        disabled={deleting === session.id}
+                        className="text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed mr-4 transition-colors"
+                        title={session.results_unlocked ? 'Lock results' : 'Unlock results now'}
+                      >
+                        {session.results_unlocked ? 'Lock Results' : 'Unlock Now'}
                       </button>
                       <button
                         onClick={() => handleDelete(session.id)}

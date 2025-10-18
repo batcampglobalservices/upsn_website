@@ -308,26 +308,28 @@ const OverviewSection = () => {
                         </div>
                       </div>
                       
-                      {activeSession.result_release_date && (
+                      {(activeSession.result_release_date || activeSession.results_unlocked) && (
                         <div className="mt-4 p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border border-blue-500/30">
                           <div className="flex items-start gap-4">
                             <div className="text-4xl">📅</div>
                             <div className="flex-1">
                               <p className="font-semibold text-blue-400 text-lg mb-2">Result Release Date</p>
-                              <p className="text-gray-300 text-lg">
-                                {new Date(activeSession.result_release_date).toLocaleString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {new Date() >= new Date(activeSession.result_release_date) ? (
+                              {activeSession.result_release_date && (
+                                <p className="text-gray-300 text-lg">
+                                  {new Date(activeSession.result_release_date).toLocaleString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              )}
+                              {activeSession.results_unlocked || (activeSession.result_release_date && new Date() >= new Date(activeSession.result_release_date)) ? (
                                 <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
                                   <span>✅</span>
-                                  <span className="font-semibold">Results are now released!</span>
+                                  <span className="font-semibold">{activeSession.results_unlocked ? 'Results unlocked by admin' : 'Results are now released!'}</span>
                                 </div>
                               ) : (
                                 <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30">

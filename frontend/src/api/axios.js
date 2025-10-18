@@ -184,6 +184,12 @@ export const sessionAPI = {
   
   deleteSession: (id) => 
     api.delete(`/sessions/${id}/`),
+
+  unlockResults: (id) => 
+    api.post(`/sessions/${id}/unlock_results/`),
+
+  lockResults: (id) => 
+    api.post(`/sessions/${id}/lock_results/`),
 };
 
 // Result management API

@@ -58,7 +58,7 @@ const PupilDashboard = () => {
       const response = await sessionAPI.getSessions();
       console.log('Sessions API response:', response.data);
       
-      const sessionsData = response.data.results || response.data;
+  const sessionsData = response.data.results || response.data;
       console.log('Sessions array:', sessionsData);
       setSessions(sessionsData);
       
@@ -68,7 +68,10 @@ const PupilDashboard = () => {
       if (active) {
         setActiveSession(active);
         
-        if (active.result_release_date) {
+        if (active.results_unlocked) {
+          console.log('✅ Results manually unlocked by admin');
+          setResultsReleased(true);
+        } else if (active.result_release_date) {
           const releaseDate = new Date(active.result_release_date);
           const now = new Date();
           const isReleased = now >= releaseDate;
