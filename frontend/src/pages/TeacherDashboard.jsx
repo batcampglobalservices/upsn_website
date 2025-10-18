@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { classAPI, resultAPI, sessionAPI } from '../api/axios';
+import { classAPI } from '../api/axios';
 import ScoreEntry from '../components/ScoreEntry';
 import SubjectManager from '../components/SubjectManager';
 
@@ -9,54 +9,64 @@ const TeacherDashboard = () => {
   const [activeTab, setActiveTab] = useState('classes');
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [pupils, setPupils] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPupils, setLoadingPupils] = useState(false);
 
   useEffect(() => {
+    const fetchClasses = async () => {
+      setLoading(true);
+      try {
+        const response = await classAPI.getClasses();
+        const teacherClasses = response.data?.results || response.data || [];
+        setClasses(teacherClasses);
+        if (teacherClasses.length > 0) {
+          const first = teacherClasses[0];
+          setSelectedClass(first);
+          await fetchPupils(first.id);
+        }
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchClasses();
   }, []);
 
-  const fetchClasses = async () => {
+  const fetchPupils = async (classId) => {
+    setLoadingPupils(true);
     try {
-      const response = await classAPI.getClasses();
-      const teacherClasses = response.data.results || response.data;
-      setClasses(teacherClasses);
-      if (teacherClasses.length > 0) {
-        setSelectedClass(teacherClasses[0]);
-        fetchStudents(teacherClasses[0].id);
-      }
+      const response = await classAPI.getPupils(classId);
+      const list = response.data?.results || response.data || [];
+      setPupils(list);
     } catch (error) {
-      console.error('Error fetching classes:', error);
+      console.error('Error fetching pupils:', error);
+      setPupils([]);
     } finally {
-      setLoading(false);
+      setLoadingPupils(false);
     }
   };
 
-  const fetchStudents = async (classId) => {
-    try {
-      const response = await classAPI.getStudents(classId);
-      setStudents(response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
-  };
-
-  const handleClassChange = (classItem) => {
-    setSelectedClass(classItem);
-    fetchStudents(classItem.id);
+  const handleClassChange = async (cls) => {
+    setSelectedClass(cls);
+    await fetchPupils(cls.id);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-purple-600 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Teacher Dashboard</h1>
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      <header className="sticky top-0 z-40 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-100">
+            Teacher <span className="text-blue-400">Dashboard</span>
+          </h1>
           <div className="flex items-center gap-4">
-            <span>Welcome, {user?.full_name}</span>
+            <span className="text-gray-300 hidden sm:inline">
+              Welcome, <span className="text-blue-400 font-semibold">{user?.full_name}</span>
+            </span>
             <button
               onClick={logout}
-              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded"
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-4 py-2 rounded-xl transition-all"
             >
               Logout
             </button>
@@ -64,44 +74,46 @@ const TeacherDashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         {loading ? (
-          <p>Loading...</p>
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+            <p className="mt-4 text-gray-400">Loading...</p>
+          </div>
         ) : classes.length === 0 ? (
-          <div className="bg-white p-6 rounded-lg shadow text-center">
-            <p className="text-gray-600">No classes assigned to you yet.</p>
+          <div className="bg-gray-900/70 p-6 rounded-2xl border border-gray-800 text-center">
+            <p className="text-gray-400">No classes assigned to you yet.</p>
           </div>
         ) : (
           <>
-            {/* Tab Navigation */}
-            <div className="bg-white rounded-lg shadow mb-6">
-              <div className="flex border-b">
+            <div className="bg-gray-900/70 rounded-2xl border border-gray-800 mb-6 overflow-hidden">
+              <div className="flex border-b border-gray-800">
                 <button
                   onClick={() => setActiveTab('classes')}
-                  className={`flex-1 px-6 py-4 text-center font-semibold ${
+                  className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
                     activeTab === 'classes'
-                      ? 'border-b-2 border-purple-600 text-purple-600'
-                      : 'text-gray-600 hover:text-purple-600'
+                      ? 'text-blue-400 border-b-2 border-blue-500'
+                      : 'text-gray-400 hover:text-blue-400'
                   }`}
                 >
                   My Classes
                 </button>
                 <button
                   onClick={() => setActiveTab('subjects')}
-                  className={`flex-1 px-6 py-4 text-center font-semibold ${
+                  className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
                     activeTab === 'subjects'
-                      ? 'border-b-2 border-purple-600 text-purple-600'
-                      : 'text-gray-600 hover:text-purple-600'
+                      ? 'text-blue-400 border-b-2 border-blue-500'
+                      : 'text-gray-400 hover:text-blue-400'
                   }`}
                 >
                   Manage Subjects
                 </button>
                 <button
                   onClick={() => setActiveTab('scores')}
-                  className={`flex-1 px-6 py-4 text-center font-semibold ${
+                  className={`flex-1 px-6 py-4 text-center font-semibold transition-colors ${
                     activeTab === 'scores'
-                      ? 'border-b-2 border-purple-600 text-purple-600'
-                      : 'text-gray-600 hover:text-purple-600'
+                      ? 'text-blue-400 border-b-2 border-blue-500'
+                      : 'text-gray-400 hover:text-blue-400'
                   }`}
                 >
                   Enter Test Scores
@@ -109,67 +121,59 @@ const TeacherDashboard = () => {
               </div>
             </div>
 
-            {/* Classes Tab */}
             {activeTab === 'classes' && (
               <>
-                {/* Class Selection */}
-                <div className="bg-white p-6 rounded-lg shadow mb-6">
-                  <h2 className="text-2xl font-bold mb-4">My Classes</h2>
+                <div className="bg-gray-900/70 p-6 rounded-2xl border border-gray-800 mb-6">
+                  <h2 className="text-2xl font-bold mb-4 text-gray-100">My Classes</h2>
                   <div className="flex flex-wrap gap-2">
-                    {classes.map((classItem) => (
+                    {classes.map((cls) => (
                       <button
-                        key={classItem.id}
-                        onClick={() => handleClassChange(classItem)}
-                        className={`px-4 py-2 rounded ${
-                          selectedClass?.id === classItem.id
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        key={cls.id}
+                        onClick={() => handleClassChange(cls)}
+                        className={`px-4 py-2 rounded-2xl border transition-all ${
+                          selectedClass?.id === cls.id
+                            ? 'bg-blue-600/20 text-blue-300 border-blue-500/30'
+                            : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
                         }`}
                       >
-                        {classItem.name}
+                        {cls.name}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Selected Class Details */}
                 {selectedClass && (
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h2 className="text-2xl font-bold mb-4">
-                      {selectedClass.name} - Students
+                  <div className="bg-gray-900/70 p-6 rounded-2xl border border-gray-800">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-100">
+                      {selectedClass.name} - Pupils
                     </h2>
-                    <p className="text-gray-600 mb-4">
-                      Total Students: {students.length}
-                    </p>
+                    <p className="text-gray-400 mb-4">Total Pupils: {pupils.length}</p>
 
-                    {students.length === 0 ? (
-                      <p className="text-gray-600">No students in this class yet.</p>
+                    {loadingPupils ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400"></div>
+                        <p className="mt-3 text-gray-400">Loading pupils...</p>
+                      </div>
+                    ) : pupils.length === 0 ? (
+                      <p className="text-gray-400">No pupils in this class yet.</p>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto no-scrollbar">
                         <table className="min-w-full">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-800/50">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Student ID
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Full Name
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Admission Number
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Guardian
-                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase">Username</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase">Full Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase">Admission No.</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase">Guardian</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {students.map((student) => (
-                              <tr key={student.id}>
-                                <td className="px-6 py-4">{student.user?.username}</td>
-                                <td className="px-6 py-4">{student.user?.full_name}</td>
-                                <td className="px-6 py-4">{student.admission_number || 'N/A'}</td>
-                                <td className="px-6 py-4">{student.guardian_name || 'N/A'}</td>
+                          <tbody className="divide-y divide-gray-800">
+                            {pupils.map((p) => (
+                              <tr key={p.id}>
+                                <td className="px-6 py-4 text-gray-300">{p.user?.username}</td>
+                                <td className="px-6 py-4 text-gray-300">{p.user?.full_name}</td>
+                                <td className="px-6 py-4 text-gray-300">{p.admission_number || 'N/A'}</td>
+                                <td className="px-6 py-4 text-gray-300">{p.guardian_name || 'N/A'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -181,10 +185,7 @@ const TeacherDashboard = () => {
               </>
             )}
 
-            {/* Subject Management Tab */}
             {activeTab === 'subjects' && <SubjectManager />}
-
-            {/* Score Entry Tab */}
             {activeTab === 'scores' && <ScoreEntry />}
           </>
         )}

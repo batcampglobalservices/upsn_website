@@ -1,3 +1,20 @@
-body{
-    background: rgba(0, 0, 0, 0.379);
+/* Global overflow guard */
+html, body, #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Base background (can be overridden by Tailwind classes) */
+body {
+    background: #0b0f1a; /* Dark base */
+}
+
+/* Hide scrollbars but allow scrolling */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
