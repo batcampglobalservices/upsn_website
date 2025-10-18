@@ -378,7 +378,13 @@ const SessionManager = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                        {session.current_term === 'first' ? '1st' : session.current_term === 'second' ? '2nd' : '3rd'} Term
+                        {session.current_term === 'first'
+                          ? '1st Term'
+                          : session.current_term === 'second'
+                          ? '2nd Term'
+                          : session.current_term === 'third'
+                          ? '3rd Term'
+                          : 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
