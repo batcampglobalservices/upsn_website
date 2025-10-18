@@ -34,6 +34,24 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserCreateSerializer
         return UserSerializer
     
+    def create(self, request, *args, **kwargs):
+        """Custom create to handle user creation with proper response"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"Creating user with data: {request.data}")
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        logger.info(f"User created successfully: {user.username} (ID: {user.id})")
+        
+        # Return the user with UserSerializer to include all fields
+        output_serializer = UserSerializer(user)
+        headers = self.get_success_headers(output_serializer.data)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         """Deactivate a user"""
@@ -49,6 +67,35 @@ class UserViewSet(viewsets.ModelViewSet):
         user.is_active = True
         user.save()
         return Response({'message': 'User activated successfully'}, status=status.HTTP_200_OK)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Custom delete with logging and cascade handling"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        user = self.get_object()
+        username = user.username
+        user_id = user.id
+        user_role = user.role
+        
+        logger.warning(f"🗑️ Deleting user: {username} (ID: {user_id}, Role: {user_role})")
+        
+        try:
+            # Django will handle cascading deletes based on model relationships
+            self.perform_destroy(user)
+            logger.info(f"✅ User {username} deleted successfully")
+            
+            return Response({
+                'message': f'User {username} deleted successfully',
+                'deleted_user_id': user_id,
+                'deleted_username': username
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"❌ Error deleting user {username}: {str(e)}")
+            return Response({
+                'error': 'Failed to delete user',
+                'detail': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PupilProfileViewSet(viewsets.ModelViewSet):

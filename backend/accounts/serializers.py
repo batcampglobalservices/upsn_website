@@ -202,7 +202,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['username', 'password', 'full_name', 'role', 
-                  'email', 'phone_number', 'profile_image']
+                  'email', 'phone_number', 'profile_image', 'pupil_class', 'student_class']
         extra_kwargs = {
             'username': {'required': True},
             'full_name': {'required': True},
@@ -217,6 +217,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         # prefer pupil_class if set, else student_class
         class_id = pupil_class if pupil_class is not None else student_class
 
+        # Validate that pupils must have a class assigned
+        role = validated_data.get('role')
+        if role == 'pupil':
+            # Convert empty string to None
+            if class_id == '' or class_id == 'null' or class_id == 'undefined':
+                class_id = None
+            
+            if not class_id:
+                raise serializers.ValidationError({
+                    'pupil_class': 'A class must be assigned for pupils.'
+                })
+
         password = validated_data.pop('password')
         
         # Handle empty email - convert to None
@@ -226,6 +238,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
         # Handle empty phone_number - convert to None
         if 'phone_number' in validated_data and not validated_data['phone_number']:
             validated_data['phone_number'] = None
+        
+        # Remove profile_image if it's None or empty string
+        if 'profile_image' in validated_data and not validated_data.get('profile_image'):
+            validated_data.pop('profile_image', None)
             
         user = CustomUser.objects.create(**validated_data)
         user.set_password(password)
@@ -235,13 +251,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if user.role == 'pupil':
             profile = PupilProfile.objects.create(user=user)
             # set class if provided
-            if class_id not in [None, '']:
+            if class_id not in [None, '', 'null', 'undefined']:
                 try:
                     profile.pupil_class_id = int(class_id)
                     profile.save()
-                except Exception:
-                    # ignore invalid class id; profile created without class
-                    pass
+                except (ValueError, TypeError) as e:
+                    # If class assignment fails, delete the user and raise error
+                    user.delete()
+                    raise serializers.ValidationError({
+                        'pupil_class': f'Invalid class ID provided: {str(e)}'
+                    })
         
         return user
 
