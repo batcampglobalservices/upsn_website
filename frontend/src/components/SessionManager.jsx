@@ -56,13 +56,17 @@ const SessionManager = () => {
       }
 
       if (editingSession) {
-        await sessionAPI.updateSession(editingSession.id, submitData);
+        const updated = await sessionAPI.updateSession(editingSession.id, submitData);
         alert('Academic session updated successfully!');
+        // Optimistically update in UI
+        setSessions((prev) => prev.map((s) => s.id === editingSession.id ? { ...s, ...updated.data } : s));
       } else {
-        await sessionAPI.createSession(submitData);
+        const created = await sessionAPI.createSession(submitData);
         alert('Academic session created successfully!');
+        // Optimistically add to UI
+        setSessions((prev) => [...prev, created.data]);
       }
-      
+
       setShowForm(false);
       setEditingSession(null);
       setFormData({
@@ -73,6 +77,7 @@ const SessionManager = () => {
         result_release_date: '',
         current_term: 'first',
       });
+      // Optionally re-fetch in background for consistency
       fetchSessions();
     } catch (error) {
       console.error('Error saving session:', error);
@@ -109,12 +114,17 @@ const SessionManager = () => {
 
     try {
       setDeleting(id);
+      // Optimistically remove from UI
+      setSessions((prev) => prev.filter((s) => s.id !== id));
       await sessionAPI.deleteSession(id);
       alert('Academic session deleted successfully!');
+      // Optionally re-fetch in background for consistency
       fetchSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
       alert('Failed to delete academic session');
+      // On error, re-fetch to restore state
+      fetchSessions();
     } finally {
       setDeleting(null);
     }
