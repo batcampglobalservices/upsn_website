@@ -107,17 +107,20 @@ export const userAPI = {
     api.post(`/users/${id}/activate/`),
 };
 
-// Student Profile API
-export const studentAPI = {
+// Pupil Profile API
+export const pupilAPI = {
   getProfiles: (params) => 
-    api.get('/student-profiles/', { params }),
+    api.get('/pupil-profiles/', { params }),
   
   getProfile: (id) => 
-    api.get(`/student-profiles/${id}/`),
+    api.get(`/pupil-profiles/${id}/`),
   
   updateProfile: (id, profileData) => 
-    api.put(`/student-profiles/${id}/`, profileData),
+    api.put(`/pupil-profiles/${id}/`, profileData),
 };
+
+// For backwards compatibility
+export const studentAPI = pupilAPI;
 
 // Class management API
 export const classAPI = {
@@ -136,8 +139,12 @@ export const classAPI = {
   deleteClass: (id) => 
     api.delete(`/classes/${id}/`),
   
+  getPupils: (id) => 
+    api.get(`/classes/${id}/pupils/`),
+  
+  // For backwards compatibility
   getStudents: (id) => 
-    api.get(`/classes/${id}/students/`),
+    api.get(`/classes/${id}/pupils/`),
 };
 
 // Subject management API

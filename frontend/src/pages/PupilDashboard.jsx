@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { resultAPI, summaryAPI, sessionAPI } from '../api/axios';
 
-const StudentDashboard = () => {
+const PupilDashboard = () => {
   const { user, logout } = useAuth();
   const [results, setResults] = useState([]);
   const [summaries, setSummaries] = useState([]);
@@ -16,7 +16,7 @@ const StudentDashboard = () => {
   const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
-    console.log('=== STUDENT DASHBOARD MOUNT ===');
+    console.log('=== PUPIL DASHBOARD MOUNT ===');
     console.log('User object:', user);
     console.log('User role:', user?.role);
     console.log('User ID:', user?.id);
@@ -26,14 +26,14 @@ const StudentDashboard = () => {
       return;
     }
     
-    if (user.role !== 'student') {
-      console.error('❌ ERROR: User is not a student! Role:', user.role);
-      setError('Access denied. This page is only for students.');
+    if (user.role !== 'pupil') {
+      console.error('❌ ERROR: User is not a pupil! Role:', user.role);
+      setError('Access denied. This page is only for pupils.');
       setLoading(false);
       return;
     }
     
-    console.log('✅ User loaded and is a student');
+    console.log('✅ User loaded and is a pupil');
     initializeDashboard();
   }, [user]);
 
@@ -113,7 +113,7 @@ const StudentDashboard = () => {
 
   const fetchResults = async () => {
     try {
-      console.log('=== FETCHING STUDENT RESULTS ===');
+      console.log('=== FETCHING PUPIL RESULTS ===');
       console.log('User info:', { 
         id: user?.id, 
         username: user?.username, 
@@ -155,7 +155,7 @@ const StudentDashboard = () => {
       console.log('=== FETCHING SUMMARIES ===');
       console.log('Fetching summaries for user ID:', user?.id);
       
-      const response = await summaryAPI.getSummaries({ student: user?.id });
+      const response = await summaryAPI.getSummaries({ pupil: user?.id });
       console.log('Summaries API Response:', response);
       console.log('Summaries response.data:', response.data);
       console.log('Summaries response.status:', response.status);
@@ -263,7 +263,7 @@ const StudentDashboard = () => {
       {/* Header */}
       <header className="bg-gray-900/70 dark:bg-gray-900/70 text-gray-100 dark:text-gray-100 shadow-lg border-b border-gray-800 dark:border-gray-800">
         <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Student <span className="text-blue-400 dark:text-blue-400">Dashboard</span></h1>
+          <h1 className="text-3xl font-bold">Pupil <span className="text-blue-400 dark:text-blue-400">Dashboard</span></h1>
           <div className="flex items-center gap-6">
             <span className="text-gray-300 dark:text-gray-300">Welcome, <span className="text-blue-400 dark:text-blue-400 font-semibold">{user?.full_name}</span></span>
             <button
@@ -282,7 +282,7 @@ const StudentDashboard = () => {
           <h2 className="text-2xl font-bold mb-6 text-gray-100 dark:text-gray-100">My Profile</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-gray-400 dark:text-gray-400 mb-1">Student ID</p>
+              <p className="text-gray-400 dark:text-gray-400 mb-1">Pupil ID</p>
               <p className="font-semibold text-xl text-blue-400 dark:text-blue-400">{user?.username}</p>
             </div>
             <div>
@@ -562,7 +562,7 @@ const StudentDashboard = () => {
                               {summary.session_name || 'Unknown Session'} - <span className="capitalize">{summary.term || 'N/A'}</span> Term
                             </h4>
                             <p className="text-sm text-gray-400 dark:text-gray-400 mt-1">
-                              Class: {summary.student_class || 'N/A'}
+                              Class: {summary.pupil_class || 'N/A'}
                             </p>
                           </div>
                           <button
@@ -613,4 +613,4 @@ const StudentDashboard = () => {
   );
 };
 
-export default StudentDashboard;
+export default PupilDashboard;

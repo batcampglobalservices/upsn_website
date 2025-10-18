@@ -8,7 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import TeacherDashboard from './pages/TeacherDashboard'
-import StudentDashboard from './pages/StudentDashboard'
+import PupilDashboard from './pages/PupilDashboard'
 import AOS from "aos";
 import "aos/dist/aos.css";
 
@@ -79,13 +79,16 @@ function App() {
           />
           
           <Route 
-            path='/student-dashboard' 
+            path='/pupil-dashboard' 
             element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <StudentDashboard />
+              <ProtectedRoute allowedRoles={['pupil']}>
+                <PupilDashboard />
               </ProtectedRoute>
             } 
           />
+          
+          {/* Backwards compatibility route */}
+          <Route path='/student-dashboard' element={<Navigate to="/pupil-dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

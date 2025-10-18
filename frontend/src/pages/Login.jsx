@@ -32,8 +32,8 @@ const Login = () => {
         navigate("/admin-dashboard");
       } else if (role === "teacher") {
         navigate("/teacher-dashboard");
-      } else if (role === "student") {
-        navigate("/student-dashboard");
+      } else if (role === "pupil") {
+        navigate("/pupil-dashboard");
       } else {
         navigate("/");
       }

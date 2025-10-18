@@ -1,7 +1,7 @@
 import { useAuth } from '../hooks/useAuth';
 import AdminDashboard from './AdminDashboard';
 import TeacherDashboard from './TeacherDashboard';
-import StudentDashboard from './StudentDashboard';
+import PupilDashboard from './PupilDashboard';
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
@@ -27,8 +27,8 @@ const Dashboard = () => {
     return <AdminDashboard />;
   } else if (user.role === 'teacher') {
     return <TeacherDashboard />;
-  } else if (user.role === 'student') {
-    return <StudentDashboard />;
+  } else if (user.role === 'pupil') {
+    return <PupilDashboard />;
   }
 
   return (
